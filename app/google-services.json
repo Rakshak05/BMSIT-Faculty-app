@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "927707695047",
+    "project_id": "bmsit-faculty-30834",
+    "storage_bucket": "bmsit-faculty-30834.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:927707695047:android:8187e7ce7ba489064afbe2",
+        "android_client_info": {
+          "package_name": "com.bmsit.faculty"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCFqn1WkiJgcUI5DFvsSzPrz0zhUbxsfhw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
