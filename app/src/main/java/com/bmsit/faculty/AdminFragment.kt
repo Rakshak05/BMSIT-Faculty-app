@@ -7,12 +7,14 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.EditText
+import android.widget.Spinner
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.firestore.FirebaseFirestore
 
-// We declare that AdminFragment will follow the rules of the OnItemClickListener
 class AdminFragment : Fragment(), UserAdapter.OnItemClickListener {
 
     private lateinit var db: FirebaseFirestore
@@ -34,46 +36,59 @@ class AdminFragment : Fragment(), UserAdapter.OnItemClickListener {
         usersRecyclerView = view.findViewById(R.id.usersRecyclerView)
         usersRecyclerView.layoutManager = LinearLayoutManager(context)
 
-        // When we create the adapter, we pass 'this' as the listener.
-        // This tells the adapter, "When an item is clicked, notify this fragment."
         userAdapter = UserAdapter(userList, this)
         usersRecyclerView.adapter = userAdapter
 
         fetchUsers()
     }
 
-    // This is the function that runs when the adapter tells us an item was clicked.
     override fun onItemClick(user: User) {
-        // When a user row is tapped, we call the function to show the pop-up.
-        showRoleChangeDialog(user)
+        showEditUserDialog(user)
     }
 
-    // This new function creates and shows the pop-up dialog for changing roles.
-    private fun showRoleChangeDialog(user: User) {
-        val roles = arrayOf("Faculty", "HOD", "ADMIN")
-        val builder = AlertDialog.Builder(requireContext())
-        builder.setTitle("Change Role for ${user.name}")
-            .setItems(roles) { dialog, which ->
-                // 'which' tells us which item was selected (0 for "Faculty", 1 for "HOD", etc.)
-                val newRole = roles[which]
-                updateUserRole(user, newRole)
-            }
-        builder.create().show()
-    }
+    private fun showEditUserDialog(user: User) {
+        val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_edit_user, null)
 
-    // This new function handles the actual database update.
-    private fun updateUserRole(user: User, newRole: String) {
-        db.collection("users").document(user.uid)
-            .update("role", newRole)
-            .addOnSuccessListener {
-                Toast.makeText(context, "${user.name}'s role updated to $newRole", Toast.LENGTH_SHORT).show()
-                // We fetch the users again to instantly show the change in the list.
-                fetchUsers()
+        val nameEditText = dialogView.findViewById<EditText>(R.id.editTextUserName)
+        val departmentSpinner = dialogView.findViewById<Spinner>(R.id.spinnerUserDepartment)
+        val designationSpinner = dialogView.findViewById<Spinner>(R.id.spinnerUserDesignation)
+
+        // --- UPDATED: New list of departments ---
+        val departments = arrayOf("Unassigned", "AIML", "CS", "CSBS", "EEE", "ETE", "ECE", "Mech", "Civil", "ISE")
+        val designations = arrayOf("Unassigned", "Assistant Professor", "Associate Professor", "Professor", "Lab Assistant")
+
+        departmentSpinner.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, departments)
+        designationSpinner.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, designations)
+
+        nameEditText.setText(user.name)
+        departmentSpinner.setSelection(departments.indexOf(user.department).coerceAtLeast(0))
+        designationSpinner.setSelection(designations.indexOf(user.designation).coerceAtLeast(0))
+
+        AlertDialog.Builder(requireContext())
+            .setView(dialogView)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Update") { dialog, which ->
+                val newName = nameEditText.text.toString().trim()
+                val newDepartment = departmentSpinner.selectedItem.toString()
+                val newDesignation = designationSpinner.selectedItem.toString()
+
+                val updates = mapOf(
+                    "name" to newName,
+                    "department" to newDepartment,
+                    "designation" to newDesignation
+                )
+
+                db.collection("users").document(user.uid).update(updates)
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "${user.name}'s profile updated.", Toast.LENGTH_SHORT).show()
+                        fetchUsers()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(context, "Error updating profile.", Toast.LENGTH_SHORT).show()
+                        Log.w("AdminFragment", "Error updating user document", e)
+                    }
             }
-            .addOnFailureListener { e ->
-                Toast.makeText(context, "Error updating role", Toast.LENGTH_SHORT).show()
-                Log.w("AdminFragment", "Error updating document", e)
-            }
+            .show()
     }
 
 

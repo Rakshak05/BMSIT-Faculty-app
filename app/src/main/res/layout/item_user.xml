@@ -27,4 +27,18 @@
         android:text="Role: Faculty"
         android:textStyle="italic" />
 
+    <!-- NEW: TextView for Department -->
+    <TextView
+        android:id="@+id/textViewUserDepartment"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Dept: Unassigned" />
+
+    <!-- NEW: TextView for Designation -->
+    <TextView
+        android:id="@+id/textViewUserDesignation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Designation: Unassigned" />
+
 </LinearLayout>

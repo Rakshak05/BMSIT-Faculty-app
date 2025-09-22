@@ -1,14 +1,20 @@
 package com.bmsit.faculty
 
+import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Spinner
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -23,22 +29,37 @@ class ScheduleMeetingActivity : AppCompatActivity() {
     private lateinit var locationEditText: EditText
     private lateinit var attendeesSpinner: Spinner
 
-    // --- NEW: Add Firebase instances ---
     private lateinit var db: FirebaseFirestore
     private lateinit var auth: FirebaseAuth
 
-    // Variables to store the selected date and time
     private var selectedYear = -1
     private var selectedMonth = -1
     private var selectedDay = -1
     private var selectedHour = -1
     private var selectedMinute = -1
 
+    // A variable to hold the list of selected custom attendees
+    private var customAttendeeUids = listOf<String>()
+
+
+    // This is the modern way to handle getting a result back from another activity.
+    // It listens for the result from SelectAttendeesActivity.
+    private val selectAttendeesLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            // If the user clicked "Done", get the list of UIDs
+            customAttendeeUids = result.data?.getStringArrayListExtra("SELECTED_UIDS") ?: emptyList()
+            Toast.makeText(this, "${customAttendeeUids.size} attendees selected.", Toast.LENGTH_SHORT).show()
+        } else {
+            // If the user pressed "Back" without clicking "Done", reset the spinner to the first option
+            attendeesSpinner.setSelection(0)
+        }
+    }
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_schedule_meeting)
 
-        // --- NEW: Initialize Firebase ---
         db = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
 
@@ -53,78 +74,93 @@ class ScheduleMeetingActivity : AppCompatActivity() {
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, attendeeOptions)
         attendeesSpinner.adapter = adapter
 
-        dateButton.setOnClickListener {
-            val calendar = Calendar.getInstance()
-            DatePickerDialog(this, { _, year, monthOfYear, dayOfMonth ->
-                dateButton.text = "$dayOfMonth/${monthOfYear + 1}/$year"
-                selectedYear = year
-                selectedMonth = monthOfYear
-                selectedDay = dayOfMonth
-            }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
+        // Listen for when an item is selected in the dropdown
+        attendeesSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (attendeeOptions[position] == "Custom") {
+                    // If "Custom" is selected, launch our new screen
+                    val intent = Intent(this@ScheduleMeetingActivity, SelectAttendeesActivity::class.java)
+                    selectAttendeesLauncher.launch(intent)
+                } else {
+                    // If user selects something else (e.g., "All Faculty"), clear the custom list
+                    customAttendeeUids = emptyList()
+                }
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
-        timeButton.setOnClickListener {
-            val calendar = Calendar.getInstance()
-            TimePickerDialog(this, { _, hourOfDay, minute ->
-                timeButton.text = String.format("%02d:%02d", hourOfDay, minute)
-                selectedHour = hourOfDay
-                selectedMinute = minute
-            }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), true).show()
-        }
+        setupPickers()
 
-        // --- NEW: Updated Save Button Logic ---
         saveButton.setOnClickListener {
             saveMeetingToFirestore()
         }
     }
 
-    // --- This is a brand new function ---
     private fun saveMeetingToFirestore() {
         val title = titleEditText.text.toString().trim()
         val location = locationEditText.text.toString().trim()
         val attendees = attendeesSpinner.selectedItem.toString()
         val schedulerId = auth.currentUser?.uid
 
-        // --- Input Validation ---
         if (title.isEmpty()) {
-            titleEditText.error = "Title is required"
-            return
+            titleEditText.error = "Title is required"; return
         }
         if (selectedDay == -1 || selectedHour == -1) {
-            Toast.makeText(this, "Please select a date and time", Toast.LENGTH_SHORT).show()
-            return
+            Toast.makeText(this, "Please select a date and time", Toast.LENGTH_SHORT).show(); return
         }
         if (schedulerId == null) {
-            Toast.makeText(this, "Error: You must be logged in to schedule a meeting.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Error: You must be logged in.", Toast.LENGTH_LONG).show(); return
+        }
+
+        // Validation for Custom meetings
+        if (attendees == "Custom" && customAttendeeUids.isEmpty()) {
+            Toast.makeText(this, "Please select at least one custom attendee.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // --- Create a Calendar object and convert to Firestore Timestamp ---
         val calendar = Calendar.getInstance()
         calendar.set(selectedYear, selectedMonth, selectedDay, selectedHour, selectedMinute)
         val meetingTimestamp = Timestamp(calendar.time)
 
-        // --- Create a new meeting object ---
-        val meetingId = db.collection("meetings").document().id // Generate a unique ID
+        val meetingId = db.collection("meetings").document().id
         val newMeeting = Meeting(
             id = meetingId,
             title = title,
             location = location,
             dateTime = meetingTimestamp,
             attendees = attendees,
-            scheduledBy = schedulerId
+            scheduledBy = schedulerId,
+            // Save the list of custom attendees to the meeting document
+            customAttendeeUids = customAttendeeUids
         )
 
-        // --- Save to Firestore ---
         db.collection("meetings").document(meetingId).set(newMeeting)
             .addOnSuccessListener {
                 Toast.makeText(this, "Meeting scheduled successfully!", Toast.LENGTH_SHORT).show()
-                Log.d("Firestore", "Meeting saved with ID: $meetingId")
-                finish() // Close the screen and go back to the dashboard
+                finish()
             }
             .addOnFailureListener { e ->
                 Toast.makeText(this, "Error saving meeting. Please try again.", Toast.LENGTH_SHORT).show()
-                Log.w("Firestore", "Error writing document", e)
+                Log.w("ScheduleMeeting", "Error writing document", e)
             }
     }
+
+    @SuppressLint("DefaultLocale", "SetTextI18n")
+    private fun setupPickers() {
+        dateButton.setOnClickListener {
+            val calendar = Calendar.getInstance()
+            DatePickerDialog(this, { _, year, month, day ->
+                dateButton.text = "$day/${month + 1}/$year"
+                selectedYear = year; selectedMonth = month; selectedDay = day
+            }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
+        }
+        timeButton.setOnClickListener {
+            val calendar = Calendar.getInstance()
+            TimePickerDialog(this, { _, hour, minute ->
+                timeButton.text = String.format("%02d:%02d", hour, minute)
+                selectedHour = hour; selectedMinute = minute
+            }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), true).show()
+        }
+    }
 }
+

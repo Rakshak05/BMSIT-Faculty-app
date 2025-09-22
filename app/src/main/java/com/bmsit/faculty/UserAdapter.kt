@@ -6,14 +6,11 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-// We pass in a new "listener" so the adapter can talk back to the fragment.
 class UserAdapter(
     private val userList: List<User>,
-    private val listener: OnItemClickListener // <-- NEW
+    private val listener: OnItemClickListener
 ) : RecyclerView.Adapter<UserAdapter.UserViewHolder>() {
 
-    // --- NEW: This is an "interface". It's a contract that says
-    // whoever uses this adapter must be able to handle an onItemClick event.
     interface OnItemClickListener {
         fun onItemClick(user: User)
     }
@@ -22,22 +19,22 @@ class UserAdapter(
         val nameTextView: TextView = itemView.findViewById(R.id.textViewUserName)
         val emailTextView: TextView = itemView.findViewById(R.id.textViewUserEmail)
         val roleTextView: TextView = itemView.findViewById(R.id.textViewUserRole)
+        // Get references to the new TextViews from the layout
+        val departmentTextView: TextView = itemView.findViewById(R.id.textViewUserDepartment)
+        val designationTextView: TextView = itemView.findViewById(R.id.textViewUserDesignation)
 
-        // --- NEW: Make the whole row clickable
         init {
             itemView.setOnClickListener(this)
         }
 
-        // --- NEW: When a click happens, tell our listener
         override fun onClick(v: View?) {
             val position = adapterPosition
-            if (position != RecyclerView.NO_POSITION) { // Make sure the click is valid
+            if (position != RecyclerView.NO_POSITION) {
                 listener.onItemClick(userList[position])
             }
         }
     }
 
-    // --- The rest of the file is the same as before ---
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): UserViewHolder {
         val itemView = LayoutInflater.from(parent.context).inflate(R.layout.item_user, parent, false)
         return UserViewHolder(itemView)
@@ -48,6 +45,9 @@ class UserAdapter(
         holder.nameTextView.text = currentUser.name
         holder.emailTextView.text = currentUser.email
         holder.roleTextView.text = "Role: ${currentUser.role}"
+        // Set the text for the new fields
+        holder.departmentTextView.text = "Dept: ${currentUser.department}"
+        holder.designationTextView.text = "Designation: ${currentUser.designation}"
     }
 
     override fun getItemCount() = userList.size

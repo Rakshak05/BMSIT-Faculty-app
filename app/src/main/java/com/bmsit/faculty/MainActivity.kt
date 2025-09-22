@@ -2,7 +2,6 @@ package com.bmsit.faculty
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import android.view.MenuItem
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.widget.Toolbar
@@ -12,6 +11,7 @@ import androidx.fragment.app.Fragment
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import java.time.LocalDate
 
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
@@ -45,10 +45,24 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             navigationView.setCheckedItem(R.id.nav_dashboard)
         }
 
-        setupNavigationMenuBasedOnUserRole()
+        setupNavigationMenuBasedOnUser()
     }
 
-    private fun setupNavigationMenuBasedOnUserRole() {
+    // This is the new function that acts as the messenger from the calendar to the dashboard.
+    fun switchToDashboardAndShowDate(date: LocalDate) {
+        val bundle = Bundle()
+        // We pass the date as a string because it's a simple and safe way to pass data.
+        bundle.putString("SELECTED_DATE", date.toString())
+
+        val dashboardFragment = DashboardFragment()
+        dashboardFragment.arguments = bundle
+
+        replaceFragment(dashboardFragment)
+        // Visually update the side menu to show "Dashboard" as selected.
+        navigationView.setCheckedItem(R.id.nav_dashboard)
+    }
+
+    private fun setupNavigationMenuBasedOnUser() {
         val currentUser = auth.currentUser
         val adminMenuItem = navigationView.menu.findItem(R.id.nav_admin)
 
@@ -56,28 +70,20 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             db.collection("users").document(currentUser.uid).get()
                 .addOnSuccessListener { document ->
                     if (document != null && document.exists()) {
-                        val userRole = document.getString("role")
-                        // Show the admin panel only if the role is "ADMIN" or "HOD"
-                        adminMenuItem.isVisible = (userRole == "ADMIN" || userRole == "HOD")
+                        val userDesignation = document.getString("designation")
+                        adminMenuItem.isVisible = (userDesignation == "ADMIN" || userDesignation == "HOD")
                     } else {
-                        Log.d("MainActivity", "User document not found.")
                         adminMenuItem.isVisible = false
                     }
-                }
-                .addOnFailureListener { exception ->
-                    Log.w("MainActivity", "Error fetching user role.", exception)
-                    adminMenuItem.isVisible = false
                 }
         } else {
             adminMenuItem.isVisible = false
         }
     }
 
-
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.nav_dashboard -> replaceFragment(DashboardFragment())
-            // This line makes the calendar button work
             R.id.nav_calendar -> replaceFragment(CalendarFragment())
             R.id.nav_profile -> replaceFragment(ProfileFragment())
             R.id.nav_admin -> replaceFragment(AdminFragment())
@@ -97,7 +103,14 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
             drawerLayout.closeDrawer(GravityCompat.START)
         } else {
-            super.onBackPressed()
+            // If we are on a filtered dashboard, pressing back should go to the main dashboard view.
+            val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
+            if (currentFragment is DashboardFragment && currentFragment.arguments != null) {
+                replaceFragment(DashboardFragment())
+                navigationView.setCheckedItem(R.id.nav_dashboard)
+            } else {
+                super.onBackPressed()
+            }
         }
     }
 }
