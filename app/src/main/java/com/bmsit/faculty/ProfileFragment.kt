@@ -36,8 +36,8 @@ class ProfileFragment : Fragment() {
 
         // Get references to the UI elements from the layout
         val textViewName = view.findViewById<TextView>(R.id.textViewProfileName)
-        val textViewRole = view.findViewById<TextView>(R.id.textViewProfileRole)
         val textViewEmail = view.findViewById<TextView>(R.id.textViewProfileEmail)
+        val textViewDepartment = view.findViewById<TextView>(R.id.textViewProfileDepartment)
         val buttonSignOut = view.findViewById<Button>(R.id.buttonSignOut)
 
         // --- Fetch User Data ---
@@ -54,13 +54,15 @@ class ProfileFragment : Fragment() {
                     if (document != null && document.exists()) {
                         // If the document exists, get the data
                         val name = document.getString("name") ?: "No Name"
-                        val role = document.getString("role") ?: "No Role"
                         val email = document.getString("email") ?: "No Email"
+                        val department = document.getString("department") ?: "No Department"
+                        val designation = document.getString("designation") ?: "Unassigned"
 
                         // Set the data into our TextViews
                         textViewName.text = name
-                        textViewRole.text = role
                         textViewEmail.text = email
+                        // Show designation next to department
+                        textViewDepartment.text = "$department • $designation"
                     } else {
                         Log.d("ProfileFragment", "No such document")
                         textViewName.text = "User Not Found"
@@ -88,4 +90,3 @@ class ProfileFragment : Fragment() {
         }
     }
 }
-

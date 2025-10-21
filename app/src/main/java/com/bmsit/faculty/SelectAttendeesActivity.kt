@@ -8,12 +8,16 @@ import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.EditText
+import android.widget.RadioGroup
 import android.widget.Spinner
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import android.text.Editable
+import android.text.TextWatcher
 
 class SelectAttendeesActivity : AppCompatActivity() {
 
@@ -31,6 +35,8 @@ class SelectAttendeesActivity : AppCompatActivity() {
         val designationSpinner = findViewById<Spinner>(R.id.spinnerFilterDesignation)
         val recyclerView = findViewById<RecyclerView>(R.id.attendeesRecyclerView)
         val doneButton = findViewById<Button>(R.id.buttonDone)
+        val searchEditText = findViewById<EditText>(R.id.editTextSearchUser)
+        val sortGroup = findViewById<RadioGroup>(R.id.radioGroupSort)
 
         recyclerView.layoutManager = LinearLayoutManager(this)
 
@@ -38,6 +44,9 @@ class SelectAttendeesActivity : AppCompatActivity() {
             adapter = SelectableUserAdapter(allUsers)
             recyclerView.adapter = adapter
             setupSpinners(departmentSpinner, designationSpinner)
+            // Defaults
+            adapter.setFilters(department = "All", designation = "All")
+            adapter.setSortBy(SelectableUserAdapter.SortBy.DESIGNATION)
         }
 
         doneButton.setOnClickListener {
@@ -54,11 +63,30 @@ class SelectAttendeesActivity : AppCompatActivity() {
             setResult(Activity.RESULT_OK, resultIntent)
             finish()
         }
+
+        // Search wiring
+        searchEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (::adapter.isInitialized) adapter.setSearchQuery(s?.toString() ?: "")
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        // Sort wiring
+        sortGroup.setOnCheckedChangeListener { _, checkedId ->
+            if (!::adapter.isInitialized) return@setOnCheckedChangeListener
+            when (checkedId) {
+                R.id.radioSortDesignation -> adapter.setSortBy(SelectableUserAdapter.SortBy.DESIGNATION)
+                R.id.radioSortDepartment -> adapter.setSortBy(SelectableUserAdapter.SortBy.DEPARTMENT)
+            }
+        }
     }
 
     private fun setupSpinners(departmentSpinner: Spinner, designationSpinner: Spinner) {
         val departments = arrayOf("All", "AIML", "CS", "CSBS", "EEE", "ETE", "ECE", "Mech", "Civil", "ISE")
-        val designations = arrayOf("All", "Assistant Professor", "Associate Professor", "Professor", "Lab Assistant", "HOD")
+        // Order by level: Admin, Dean, HOD, Associate, Assistant, Lab Assistant, Others
+        val designations = arrayOf("All", "ADMIN", "DEAN", "HOD", "Associate Professor", "Assistant Professor", "Lab Assistant", "Others")
 
         departmentSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, departments)
         designationSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, designations)
@@ -66,7 +94,7 @@ class SelectAttendeesActivity : AppCompatActivity() {
         val listener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 if (::adapter.isInitialized) {
-                    adapter.filter(departmentSpinner.selectedItem.toString(), designationSpinner.selectedItem.toString())
+                    adapter.setFilters(departmentSpinner.selectedItem.toString(), designationSpinner.selectedItem.toString())
                 }
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}

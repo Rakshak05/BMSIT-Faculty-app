@@ -8,17 +8,24 @@
     android:padding="16dp"
     android:theme="@style/ThemeOverlay.AppCompat.Dark">
 
-    <!-- Later, we'll replace this with the user's profile picture -->
-    <ImageView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src="@mipmap/ic_launcher_round" />
+    <!-- Initials Avatar -->
+    <TextView
+        android:id="@+id/textViewHeaderInitials"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:gravity="center"
+        android:textStyle="bold"
+        android:textSize="20sp"
+        android:textColor="@color/white"
+        android:background="@drawable/avatar_circle"
+        android:text="A" />
 
     <TextView
+        android:id="@+id/textViewHeaderGreeting"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:paddingTop="8dp"
-        android:text="Welcome Back, Rakshak"
+        android:text="Welcome back,"
         android:textAppearance="@style/TextAppearance.AppCompat.Body1" />
 
 </LinearLayout>

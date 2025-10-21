@@ -18,7 +18,6 @@ class UserAdapter(
     inner class UserViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView), View.OnClickListener {
         val nameTextView: TextView = itemView.findViewById(R.id.textViewUserName)
         val emailTextView: TextView = itemView.findViewById(R.id.textViewUserEmail)
-        val roleTextView: TextView = itemView.findViewById(R.id.textViewUserRole)
         // Get references to the new TextViews from the layout
         val departmentTextView: TextView = itemView.findViewById(R.id.textViewUserDepartment)
         val designationTextView: TextView = itemView.findViewById(R.id.textViewUserDesignation)
@@ -44,7 +43,6 @@ class UserAdapter(
         val currentUser = userList[position]
         holder.nameTextView.text = currentUser.name
         holder.emailTextView.text = currentUser.email
-        holder.roleTextView.text = "Role: ${currentUser.role}"
         // Set the text for the new fields
         holder.departmentTextView.text = "Dept: ${currentUser.department}"
         holder.designationTextView.text = "Designation: ${currentUser.designation}"

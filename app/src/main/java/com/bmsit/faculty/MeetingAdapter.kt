@@ -7,6 +7,8 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import androidx.transition.AutoTransition
+import androidx.transition.TransitionManager
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -43,6 +45,10 @@ class MeetingAdapter(
                 if (position != RecyclerView.NO_POSITION) {
                     val meeting = meetingList[position]
                     meeting.isExpanded = !meeting.isExpanded
+                    // Animate expand/collapse
+                    (itemView.parent as? ViewGroup)?.let { parent ->
+                        TransitionManager.beginDelayedTransition(parent, AutoTransition())
+                    }
                     notifyItemChanged(position) // Refresh this item to show/hide the section
                 }
             }

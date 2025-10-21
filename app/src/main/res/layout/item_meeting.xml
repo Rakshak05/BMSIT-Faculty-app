@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginVertical="8dp"
-    app:cardCornerRadius="8dp"
-    app:cardElevation="4dp">
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp"
+    app:strokeColor="@color/text_secondary"
+    app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -16,34 +18,39 @@
 
         <TextView
             android:id="@+id/textViewMeetingTitle"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Meeting Title"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"/>
 
         <TextView
             android:id="@+id/textViewMeetingDateTime"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="6dp"
             android:text="Date and Time"
-            android:textSize="16sp" />
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary" />
 
         <TextView
             android:id="@+id/textViewMeetingLocation"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Location: Conference Hall" />
+            android:layout_marginTop="2dp"
+            android:text="Location: Conference Hall"
+            android:textColor="@color/text_secondary" />
 
         <TextView
             android:id="@+id/textViewMeetingAttendees"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="2dp"
             android:text="For: All Faculty"
-            android:textStyle="italic" />
+            android:textSize="13sp"
+            android:textColor="@color/text_secondary" />
 
         <!-- This section will be hidden/shown on click -->
         <LinearLayout
@@ -55,12 +62,13 @@
             android:visibility="gone"
             tools:visibility="visible">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/buttonSetReminder"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
-                android:text="Set a reminder" />
+                android:text="Set a reminder"
+                style="@style/Widget.Material3.Button.OutlinedButton"/>
 
             <!-- Edit and Cancel buttons for the scheduler -->
             <LinearLayout
@@ -72,26 +80,26 @@
                 android:visibility="gone"
                 tools:visibility="visible">
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonEditMeeting"
-                    style="?android:attr/buttonBarButtonStyle"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Edit" />
+                    android:text="Edit"
+                    style="@style/Widget.Material3.Button.TonalButton"/>
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonCancelMeeting"
-                    style="?android:attr/buttonBarButtonStyle"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="Cancel"
-                    android:textColor="@color/red_error" /> <!-- This line is now fixed -->
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:textColor="@color/red_error" />
             </LinearLayout>
 
         </LinearLayout>
 
     </LinearLayout>
-</androidx.cardview.widget.CardView>
+</com.google.android.material.card.MaterialCardView>
 

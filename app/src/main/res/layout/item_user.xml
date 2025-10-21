@@ -20,12 +20,6 @@
         android:text="user@bmsit.in"
         android:textSize="14sp" />
 
-    <TextView
-        android:id="@+id/textViewUserRole"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Role: Faculty"
-        android:textStyle="italic" />
 
     <!-- NEW: TextView for Department -->
     <TextView

@@ -14,7 +14,8 @@ data class Meeting(
 
     // --- NEW: A list to hold the UIDs of custom attendees ---
     val customAttendeeUids: List<String> = emptyList(),
+    // --- NEW: Status of the meeting (e.g., Active, Cancelled) ---
+    val status: String = "Active",
 
     @get:Exclude var isExpanded: Boolean = false
 )
-

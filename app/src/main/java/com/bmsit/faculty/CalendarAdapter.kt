@@ -5,12 +5,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import java.time.LocalDate
+import java.util.*
 
 class CalendarAdapter(
-    private val daysOfMonth: ArrayList<LocalDate?>,
+    private val daysOfMonth: ArrayList<Date?>,
     private val meetingsForMonth: List<Meeting>,
-    private val onItemListener: (LocalDate) -> Unit
+    private val onItemListener: (Date) -> Unit
 ) : RecyclerView.Adapter<CalendarAdapter.CalendarViewHolder>() {
 
     inner class CalendarViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -42,16 +42,21 @@ class CalendarAdapter(
             holder.dayOfMonth.text = ""
             holder.meetingIndicator.visibility = View.INVISIBLE
         } else {
-            holder.dayOfMonth.text = date.dayOfMonth.toString()
-            if (date == LocalDate.now()) {
+            val calendar = Calendar.getInstance()
+            calendar.time = date
+            holder.dayOfMonth.text = calendar.get(Calendar.DAY_OF_MONTH).toString()
+            
+            val today = Calendar.getInstance()
+            if (isSameDay(calendar, today)) {
                 holder.dayOfMonth.setBackgroundResource(R.drawable.ic_today_background)
             } else {
                 holder.dayOfMonth.background = null
             }
 
             val hasMeeting = meetingsForMonth.any { meeting ->
-                val meetingDate = meeting.dateTime.toDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-                meetingDate.isEqual(date)
+                val meetingCalendar = Calendar.getInstance()
+                meetingCalendar.time = meeting.dateTime.toDate()
+                isSameDay(meetingCalendar, calendar)
             }
             holder.meetingIndicator.visibility = if (hasMeeting) View.VISIBLE else View.INVISIBLE
         }
@@ -59,5 +64,10 @@ class CalendarAdapter(
 
     override fun getItemCount(): Int {
         return daysOfMonth.size
+    }
+    
+    private fun isSameDay(cal1: Calendar, cal2: Calendar): Boolean {
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+               cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
     }
 }

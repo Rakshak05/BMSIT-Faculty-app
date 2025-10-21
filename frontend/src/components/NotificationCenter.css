@@ -1,0 +1,151 @@
+.notification-center {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 2rem 0;
+  background-color: #fff;
+  color: #333;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.notification-header h2 {
+  margin: 0;
+}
+
+.notification-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.notification-actions button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.notification-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+  background-color: #f9f9f9;
+}
+
+.notification-item.unread {
+  background-color: #f0f8ff;
+  border-left: 3px solid #4a90e2;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.notification-message {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.notification-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.notification-type {
+  text-transform: uppercase;
+  padding: 0.125rem 0.25rem;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.notification-type.info {
+  background-color: #e1f0fa;
+  color: #1976d2;
+}
+
+.notification-type.success {
+  background-color: #e8f5e9;
+  color: #388e3c;
+}
+
+.notification-type.warning {
+  background-color: #fff8e1;
+  color: #f57c00;
+}
+
+.notification-type.error {
+  background-color: #ffebee;
+  color: #d32f2f;
+}
+
+.notification-item .notification-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-left: 1rem;
+}
+
+.notification-actions button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.mark-read-btn {
+  background-color: #4a90e2;
+  color: white;
+}
+
+.delete-btn {
+  background-color: #ff6b6b;
+  color: white;
+}
+
+@media (prefers-color-scheme: dark) {
+  .notification-center {
+    background-color: #1a1a1a;
+    color: #fff;
+    border-color: #444;
+  }
+  
+  .notification-item:hover {
+    background-color: #2a2a2a;
+  }
+  
+  .notification-item.unread {
+    background-color: #1e3a5f;
+  }
+  
+  .notification-message {
+    color: #ccc;
+  }
+  
+  .notification-meta {
+    color: #999;
+  }
+}

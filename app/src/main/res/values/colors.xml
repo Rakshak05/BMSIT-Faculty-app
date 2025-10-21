@@ -9,5 +9,7 @@
     <color name="white">#FFFFFFFF</color>
     <!-- Add this new red color for error text -->
     <color name="red_error">#D32F2F</color>
+    <!-- Text colors (light theme) -->
+    <color name="text_primary">#FF000000</color>
+    <color name="text_secondary">#99000000</color>
 </resources>
-

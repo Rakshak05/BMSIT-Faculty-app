@@ -17,6 +17,17 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <EditText
+        android:id="@+id/editTextSearchUser"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:hint="Search by name"
+        app:layout_constraintTop_toBottomOf="@id/textViewSelectTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
     <Spinner
         android:id="@+id/spinnerFilterDepartment"
         android:layout_width="0dp"
@@ -24,7 +35,7 @@
         android:layout_margin="16dp"
         app:layout_constraintEnd_toStartOf="@id/spinnerFilterDesignation"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/textViewSelectTitle" />
+        app:layout_constraintTop_toBottomOf="@id/editTextSearchUser" />
 
     <Spinner
         android:id="@+id/spinnerFilterDesignation"
@@ -33,7 +44,31 @@
         android:layout_margin="16dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/spinnerFilterDepartment"
-        app:layout_constraintTop_toBottomOf="@id/textViewSelectTitle" />
+        app:layout_constraintTop_toBottomOf="@id/editTextSearchUser" />
+
+    <RadioGroup
+        android:id="@+id/radioGroupSort"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        app:layout_constraintTop_toBottomOf="@id/spinnerFilterDesignation"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+        <RadioButton
+            android:id="@+id/radioSortDesignation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="Sort by Designation"/>
+        <RadioButton
+            android:id="@+id/radioSortDepartment"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:text="Sort by Department"/>
+    </RadioGroup>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/attendeesRecyclerView"
@@ -43,7 +78,7 @@
         app:layout_constraintBottom_toTopOf="@id/buttonDone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/spinnerFilterDepartment" />
+        app:layout_constraintTop_toBottomOf="@id/radioGroupSort" />
 
     <Button
         android:id="@+id/buttonDone"

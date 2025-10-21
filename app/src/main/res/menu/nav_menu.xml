@@ -9,20 +9,22 @@
             android:id="@+id/nav_calendar"
             android:icon="@drawable/ic_calendar"
             android:title="Calendar" />
-        <item
-            android:id="@+id/nav_profile"
-            android:icon="@drawable/ic_profile"
-            android:title="Profile" />
-        <!--
-         This is the new item we are adding.
-         - android:id gives it a unique name so our code can find it.
-         - android:icon tells it which picture to use.
-         - android:title is the text that will be displayed.
-        -->
+        <!-- Admin (conditionally visible) -->
         <item
             android:id="@+id/nav_admin"
             android:icon="@drawable/ic_admin"
             android:title="Admin Panel" />
+
+        <!-- Diagnostic tool for troubleshooting -->
+        <item
+            android:id="@+id/nav_diagnostic"
+            android:icon="@drawable/ic_dashboard"
+            android:title="Diagnostics" />
+
+        <!-- Profile should always be at the bottom -->
+        <item
+            android:id="@+id/nav_profile"
+            android:icon="@drawable/ic_profile"
+            android:title="Profile" />
     </group>
 </menu>
-

@@ -1,6 +1,5 @@
 package com.bmsit.faculty
 
-import android.os.Build
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -9,20 +8,19 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import java.time.LocalDate
-import java.time.YearMonth
-import java.time.format.DateTimeFormatter
+import java.text.SimpleDateFormat
+import java.util.*
+import android.util.Log
 
 class CalendarFragment : Fragment() {
 
     private lateinit var monthYearText: TextView
     private lateinit var calendarRecyclerView: RecyclerView
-    private lateinit var selectedDate: LocalDate
+    private lateinit var selectedDate: Calendar
     private val allMeetings = mutableListOf<Meeting>()
     private lateinit var db: FirebaseFirestore
     private lateinit var auth: FirebaseAuth
@@ -34,7 +32,6 @@ class CalendarFragment : Fragment() {
         return inflater.inflate(R.layout.fragment_calendar, container, false)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         db = FirebaseFirestore.getInstance()
@@ -45,7 +42,7 @@ class CalendarFragment : Fragment() {
         val prevButton: Button = view.findViewById(R.id.buttonPreviousMonth)
         val nextButton: Button = view.findViewById(R.id.buttonNextMonth)
 
-        selectedDate = LocalDate.now()
+        selectedDate = Calendar.getInstance()
 
         prevButton.setOnClickListener { previousMonthAction() }
         nextButton.setOnClickListener { nextMonthAction() }
@@ -53,7 +50,6 @@ class CalendarFragment : Fragment() {
         fetchAllMeetingsForUser()
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun fetchAllMeetingsForUser() {
         val currentUser = auth.currentUser ?: return
         db.collection("users").document(currentUser.uid).get().addOnSuccessListener { userDoc ->
@@ -62,21 +58,38 @@ class CalendarFragment : Fragment() {
                 allMeetings.clear()
                 for (document in result) {
                     val meeting = document.toObject(Meeting::class.java)
-                    val validDesignationsForFacultyMeeting = listOf("Faculty", "HOD", "Assistant Professor", "Associate Professor", "Professor", "Lab Assistant", "ADMIN")
+                    if (meeting.status != "Active") continue
+                    val validDesignationsForFacultyMeeting = listOf(
+                        "Faculty",
+                        "Assistant Professor",
+                        "Associate Professor",
+                        "Lab Assistant",
+                        "HOD",
+                        "DEAN",
+                        "ADMIN"
+                    )
                     val canSeeMeeting = when (meeting.attendees) {
                         "All Faculty" -> userDesignation in validDesignationsForFacultyMeeting
+                        "All Deans" -> userDesignation == "DEAN" || userDesignation == "ADMIN"
                         "All HODs" -> userDesignation == "HOD" || userDesignation == "ADMIN"
                         "Custom" -> meeting.customAttendeeUids.contains(currentUser.uid)
                         else -> false
                     }
-                    if(canSeeMeeting) allMeetings.add(meeting)
+                    // Ensure scheduler always sees their own meetings
+                    val visibleToUser = canSeeMeeting || meeting.scheduledBy == currentUser.uid
+                    if(visibleToUser) allMeetings.add(meeting)
                 }
                 setMonthView()
+            }.addOnFailureListener { exception ->
+                Log.e("CalendarFragment", "Error fetching meetings: ", exception)
+                Toast.makeText(context, "Error loading meetings: ${exception.message}", Toast.LENGTH_LONG).show()
             }
+        }.addOnFailureListener { exception ->
+            Log.e("CalendarFragment", "Error fetching user data: ", exception)
+            Toast.makeText(context, "Error loading user data: ${exception.message}", Toast.LENGTH_LONG).show()
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun setMonthView() {
         monthYearText.text = monthYearFromDate(selectedDate)
         val daysInMonth = daysInMonthArray(selectedDate)
@@ -90,64 +103,75 @@ class CalendarFragment : Fragment() {
         calendarRecyclerView.adapter = calendarAdapter
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun filterMeetingsForMonth(date: LocalDate): List<Meeting> {
+    private fun filterMeetingsForMonth(date: Calendar): List<Meeting> {
         return allMeetings.filter {
-            val meetingDate = it.dateTime.toDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-            meetingDate.year == date.year && meetingDate.month == date.month
+            val meetingCalendar = Calendar.getInstance()
+            meetingCalendar.time = it.dateTime.toDate()
+            isSameMonth(meetingCalendar, date)
         }
     }
 
+    private fun isSameMonth(cal1: Calendar, cal2: Calendar): Boolean {
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+               cal1.get(Calendar.MONTH) == cal2.get(Calendar.MONTH)
+    }
+
     // This function now tells the MainActivity to switch to the dashboard
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun onDateClick(date: LocalDate) {
+    private fun onDateClick(date: Date) {
         val meetingsOnDate = allMeetings.any {
-            val meetingDate = it.dateTime.toDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-            meetingDate.isEqual(date)
+            val meetingCalendar = Calendar.getInstance()
+            meetingCalendar.time = it.dateTime.toDate()
+            val dateCalendar = Calendar.getInstance()
+            dateCalendar.time = date
+            isSameDay(meetingCalendar, dateCalendar)
         }
 
         if (meetingsOnDate) {
             // If there's a meeting, call the function in MainActivity to handle the switch
-            (activity as? MainActivity)?.switchToDashboardAndShowDate(date)
+            val dateCalendar = Calendar.getInstance()
+            dateCalendar.time = date
+            (activity as? MainActivity)?.switchToDashboardAndShowDate(dateCalendar)
         } else {
             Toast.makeText(context, "No meetings on this day.", Toast.LENGTH_SHORT).show()
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun daysInMonthArray(date: LocalDate): ArrayList<LocalDate?> {
-        val daysInMonthArray = ArrayList<LocalDate?>()
-        val yearMonth = YearMonth.from(date)
-        val daysInMonth = yearMonth.lengthOfMonth()
-        val firstOfMonth = selectedDate.withDayOfMonth(1)
-        val dayOfWeek = firstOfMonth.dayOfWeek.value % 7 // Sun=0, Mon=1...
+    private fun isSameDay(cal1: Calendar, cal2: Calendar): Boolean {
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+               cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+    }
+
+    private fun daysInMonthArray(date: Calendar): ArrayList<Date?> {
+        val daysInMonthArray = ArrayList<Date?>()
+        val daysInMonth = date.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val firstOfMonth = date.clone() as Calendar
+        firstOfMonth.set(Calendar.DAY_OF_MONTH, 1)
+        val dayOfWeek = (firstOfMonth.get(Calendar.DAY_OF_WEEK) + 5) % 7 // Sun=0, Mon=1...
 
         for (i in 1..42) {
             if (i <= dayOfWeek || i > daysInMonth + dayOfWeek) {
                 daysInMonthArray.add(null)
             } else {
-                daysInMonthArray.add(LocalDate.of(selectedDate.year, selectedDate.month, i - dayOfWeek))
+                val dayCalendar = date.clone() as Calendar
+                dayCalendar.set(Calendar.DAY_OF_MONTH, i - dayOfWeek)
+                daysInMonthArray.add(dayCalendar.time)
             }
         }
         return daysInMonthArray
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun monthYearFromDate(date: LocalDate): String {
-        val formatter = DateTimeFormatter.ofPattern("MMMM yyyy")
-        return date.format(formatter)
+    private fun monthYearFromDate(date: Calendar): String {
+        val formatter = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+        return formatter.format(date.time)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun previousMonthAction() {
-        selectedDate = selectedDate.minusMonths(1)
+        selectedDate.add(Calendar.MONTH, -1)
         setMonthView()
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun nextMonthAction() {
-        selectedDate = selectedDate.plusMonths(1)
+        selectedDate.add(Calendar.MONTH, 1)
         setMonthView()
     }
 }
-

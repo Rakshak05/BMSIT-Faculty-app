@@ -46,8 +46,9 @@ class EditMeetingActivity : AppCompatActivity() {
         val updateButton = findViewById<Button>(R.id.buttonUpdateMeeting)
 
         // Set up the spinner (same as before)
-        val attendeeOptions = arrayOf("All Faculty", "All HODs", "Custom")
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, attendeeOptions)
+        val attendeeOptions = arrayOf("All Faculty", "All Deans", "All HODs", "Custom")
+        val adapter = ArrayAdapter(this, R.layout.spinner_item_large, attendeeOptions)
+        adapter.setDropDownViewResource(R.layout.spinner_dropdown_item_large)
         attendeesSpinner.adapter = adapter
 
         // Fetch and display existing meeting data

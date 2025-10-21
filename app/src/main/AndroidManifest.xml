@@ -4,7 +4,12 @@
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application
         android:allowBackup="true"
@@ -21,6 +26,23 @@
             android:name="com.bmsit.faculty.AlarmReceiver"
             android:enabled="true" />
 
+        <receiver
+            android:name="com.bmsit.faculty.AlarmActionReceiver"
+            android:exported="false" />
+
+        <service
+            android:name="com.bmsit.faculty.AlarmRingingService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <service
+            android:name=".MessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <activity
             android:name="com.bmsit.faculty.LoginActivity"
             android:exported="true">
@@ -34,8 +56,13 @@
         <activity android:name="com.bmsit.faculty.ScheduleMeetingActivity" android:label="Schedule Meeting" android:exported="false" />
         <activity android:name="com.bmsit.faculty.EditMeetingActivity" android:label="Edit Meeting" android:exported="false" />
         <activity android:name="com.bmsit.faculty.SelectAttendeesActivity" android:label="Select Attendees" android:exported="false" />
+        <activity android:name="com.bmsit.faculty.TestActivity" android:label="Test Activity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
     </application>
 
 </manifest>
-

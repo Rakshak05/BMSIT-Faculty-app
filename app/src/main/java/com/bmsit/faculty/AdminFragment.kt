@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 
 class AdminFragment : Fragment(), UserAdapter.OnItemClickListener {
 
@@ -39,6 +40,7 @@ class AdminFragment : Fragment(), UserAdapter.OnItemClickListener {
         userAdapter = UserAdapter(userList, this)
         usersRecyclerView.adapter = userAdapter
 
+        setHasOptionsMenu(true)
         fetchUsers()
     }
 
@@ -55,7 +57,8 @@ class AdminFragment : Fragment(), UserAdapter.OnItemClickListener {
 
         // --- UPDATED: New list of departments ---
         val departments = arrayOf("Unassigned", "AIML", "CS", "CSBS", "EEE", "ETE", "ECE", "Mech", "Civil", "ISE")
-        val designations = arrayOf("Unassigned", "Assistant Professor", "Associate Professor", "Professor", "Lab Assistant")
+        // Order by authority level (high -> low), then include Others and Unassigned at end
+        val designations = arrayOf("ADMIN", "DEAN", "HOD", "Associate Professor", "Assistant Professor", "Lab Assistant", "Others", "Unassigned")
 
         departmentSpinner.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, departments)
         designationSpinner.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, designations)
@@ -101,11 +104,88 @@ class AdminFragment : Fragment(), UserAdapter.OnItemClickListener {
                     val user = document.toObject(User::class.java)
                     userList.add(user)
                 }
+                // Sort by designation level desc, then department asc, then name asc
+                userList.sortWith(compareByDescending<User> { designationRank(it.designation) }
+                    .thenBy { it.department }
+                    .thenBy { it.name })
                 userAdapter.notifyDataSetChanged()
+                
+                // Show a message if there are no users
+                if (userList.isEmpty()) {
+                    Toast.makeText(context, "No users found in the system.", Toast.LENGTH_SHORT).show()
+                }
             }
             .addOnFailureListener { exception ->
                 Log.w("AdminFragment", "Error getting documents.", exception)
+                Toast.makeText(context, "Error loading users: ${exception.message}", Toast.LENGTH_LONG).show()
             }
     }
-}
 
+    private fun designationRank(designation: String?): Int {
+        return when (designation?.uppercase()) {
+            "ADMIN" -> 7
+            "DEAN" -> 7
+            "HOD" -> 5
+            "ASSOCIATE PROFESSOR" -> 3
+            "ASSISTANT PROFESSOR" -> 2
+            "LAB ASSISTANT" -> 1
+            "OTHERS" -> 1
+            else -> 0 // Unassigned or unknown
+        }
+    }
+
+    override fun onCreateOptionsMenu(menu: android.view.Menu, inflater: android.view.MenuInflater) {
+        super.onCreateOptionsMenu(menu, inflater)
+        inflater.inflate(R.menu.admin_menu, menu)
+    }
+
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_backfill_designations -> {
+                // Set 'Others' where designation is null or blank
+                db.collection("users").get()
+                    .addOnSuccessListener { result ->
+                        val batch = db.batch()
+                        var count = 0
+                        for (doc in result) {
+                            val designation = doc.getString("designation")
+                            if (designation.isNullOrBlank()) {
+                                batch.update(doc.reference, mapOf("designation" to "Others"))
+                                count++
+                            }
+                        }
+                        if (count > 0) {
+                            batch.commit().addOnSuccessListener {
+                                Toast.makeText(context, "Updated $count user(s) to 'Others'.", Toast.LENGTH_SHORT).show()
+                                fetchUsers()
+                            }
+                        } else {
+                            Toast.makeText(context, "No users required backfill.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                true
+            }
+            R.id.action_remove_role_field -> {
+                db.collection("users").get().addOnSuccessListener { result ->
+                    val batch = db.batch()
+                    var count = 0
+                    for (doc in result) {
+                        if (doc.contains("role")) {
+                            batch.update(doc.reference, mapOf("role" to FieldValue.delete()))
+                            count++
+                        }
+                    }
+                    if (count > 0) {
+                        batch.commit().addOnSuccessListener {
+                            Toast.makeText(context, "Removed 'role' from $count user(s).", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(context, "No 'role' field found.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+}

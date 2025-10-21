@@ -33,17 +33,17 @@
         app:layout_constraintTop_toBottomOf="@id/imageViewProfile"
         tools:text="Rakshak" />
 
-    <!-- User Role TextView -->
+    <!-- User Department TextView -->
     <TextView
-        android:id="@+id/textViewProfileRole"
+        android:id="@+id/textViewProfileDepartment"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:textSize="18sp"
+        android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/textViewProfileName"
-        tools:text="Faculty" />
+        tools:text="CS" />
 
     <!-- User Email TextView -->
     <TextView
@@ -54,7 +54,7 @@
         android:textSize="16sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/textViewProfileRole"
+        app:layout_constraintTop_toBottomOf="@id/textViewProfileDepartment"
         tools:text="rakshak@bmsit.in" />
 
 

@@ -17,16 +17,30 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <Button
-        android:id="@+id/buttonScheduleMeeting"
-        android:layout_width="0dp"
+    <!-- Extended FAB to schedule a meeting (visible for admins/HODs/Deans) -->
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/fabScheduleMeeting"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Schedule a New Meeting"
+        android:text="Schedule meeting"
         android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintVertical_bias="1.0"
+        tools:visibility="visible" />
+
+    <!-- Extended FAB for voice assistant -->
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/fabVoiceAssistant"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Voice"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/textViewTitle"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintVertical_bias="1.0"
         tools:visibility="visible" />
 
     <androidx.recyclerview.widget.RecyclerView
@@ -38,7 +52,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/buttonScheduleMeeting"
+        app:layout_constraintTop_toBottomOf="@id/textViewTitle"
         tools:listitem="@layout/item_meeting"
         tools:visibility="visible" />
 
@@ -52,7 +66,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/buttonScheduleMeeting"
+        app:layout_constraintTop_toBottomOf="@id/textViewTitle"
         tools:visibility="visible" />
 
     <!-- NEW: TextView for empty state -->
@@ -66,7 +80,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/buttonScheduleMeeting"
+        app:layout_constraintTop_toBottomOf="@id/textViewTitle"
         tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
