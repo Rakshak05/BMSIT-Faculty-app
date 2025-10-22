@@ -93,3 +93,11 @@ If you still see permission errors after updating the rules:
 2. Wait a few minutes for the rules to propagate
 3. Try signing out and signing back in to the app
 4. Check the Firebase Console logs for more detailed error information
+
+## Push Notifications
+
+For push notifications to work when the app is closed, you also need to deploy the Firebase Cloud Functions. See FIREBASE_FUNCTIONS_SETUP.md for detailed instructions.
+
+---
+
+Improved responsiveness, added error handling, fixed Firebase permission issue, improved UI, added 'FIREBASE_RULES_FIX.md' for Firebase configuration and the alarm is working properly.
