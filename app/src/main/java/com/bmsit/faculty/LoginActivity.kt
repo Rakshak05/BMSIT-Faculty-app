@@ -1,10 +1,15 @@
 package com.bmsit.faculty
 
 import android.content.Intent
+import android.text.method.HideReturnsTransformationMethod
+import android.text.method.PasswordTransformationMethod
+import android.widget.CheckBox
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Button
+import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -25,6 +30,11 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var db: FirebaseFirestore
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var progressBar: ProgressBar
+    private lateinit var emailEditText: EditText
+    private lateinit var passwordEditText: EditText
+    private lateinit var showPasswordCheckBox: CheckBox
+    private lateinit var loginButton: Button
+    private lateinit var createAccountButton: Button
 
     // Simple crash reporting mechanism
     private class CrashHandler : Thread.UncaughtExceptionHandler {
@@ -83,8 +93,36 @@ class LoginActivity : AppCompatActivity() {
             Log.d("LoginActivity", "Firebase instances initialized")
             
             progressBar = findViewById(R.id.progressBar)
+            emailEditText = findViewById(R.id.emailEditText)
+            passwordEditText = findViewById(R.id.passwordEditText)
+            showPasswordCheckBox = findViewById(R.id.showPasswordCheckBox)
+            loginButton = findViewById(R.id.loginButton)
+            createAccountButton = findViewById(R.id.createAccountButton)
             val signInButton = findViewById<SignInButton>(R.id.signInButton)
             Log.d("LoginActivity", "Views found successfully")
+
+            // Set up password visibility toggle
+            showPasswordCheckBox.setOnCheckedChangeListener { _, isChecked ->
+                if (isChecked) {
+                    // Show password
+                    passwordEditText.transformationMethod = HideReturnsTransformationMethod.getInstance()
+                } else {
+                    // Hide password
+                    passwordEditText.transformationMethod = PasswordTransformationMethod.getInstance()
+                }
+                // Move cursor to the end of the text
+                passwordEditText.setSelection(passwordEditText.text.length)
+            }
+
+            // Set up manual login button click listener
+            loginButton.setOnClickListener {
+                performEmailPasswordLogin()
+            }
+
+            // Set up create account button click listener
+            createAccountButton.setOnClickListener {
+                createEmailPasswordAccount()
+            }
 
             val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
@@ -111,6 +149,62 @@ class LoginActivity : AppCompatActivity() {
             Log.e("LoginActivity", "Critical error in onCreate", e)
             Toast.makeText(this, "Critical error initializing app: ${e.message}", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun performEmailPasswordLogin() {
+        val email = emailEditText.text.toString().trim()
+        val password = passwordEditText.text.toString().trim()
+
+        // Validate input
+        if (email.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "Please enter both email and password", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Show progress indicator
+        progressBar.visibility = View.VISIBLE
+
+        // Perform Firebase authentication with email and password
+        auth.signInWithEmailAndPassword(email, password)
+            .addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
+                    Log.d("LoginActivity", "Email/Password authentication successful")
+                    val user = auth.currentUser!!
+                    checkAndCreateUserProfile(user.uid, user.displayName, user.email)
+                } else {
+                    Log.e("LoginActivity", "Email/Password authentication failed", task.exception)
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(this, "Authentication failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+    }
+
+    private fun createEmailPasswordAccount() {
+        val email = emailEditText.text.toString().trim()
+        val password = passwordEditText.text.toString().trim()
+
+        // Validate input
+        if (email.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "Please enter both email and password", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Show progress indicator
+        progressBar.visibility = View.VISIBLE
+
+        // Create account with Firebase authentication
+        auth.createUserWithEmailAndPassword(email, password)
+            .addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
+                    Log.d("LoginActivity", "Account creation successful")
+                    val user = auth.currentUser!!
+                    checkAndCreateUserProfile(user.uid, user.displayName, user.email)
+                } else {
+                    Log.e("LoginActivity", "Account creation failed", task.exception)
+                    progressBar.visibility = View.GONE
+                    Toast.makeText(this, "Account creation failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
     }
 
     private fun firebaseAuthWithGoogle(account: GoogleSignInAccount) {

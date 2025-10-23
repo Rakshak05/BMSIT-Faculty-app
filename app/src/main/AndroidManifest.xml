@@ -56,11 +56,7 @@
         <activity android:name="com.bmsit.faculty.ScheduleMeetingActivity" android:label="Schedule Meeting" android:exported="false" />
         <activity android:name="com.bmsit.faculty.EditMeetingActivity" android:label="Edit Meeting" android:exported="false" />
         <activity android:name="com.bmsit.faculty.SelectAttendeesActivity" android:label="Select Attendees" android:exported="false" />
-        <activity android:name="com.bmsit.faculty.TestActivity" android:label="Test Activity" android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+        <activity android:name="com.bmsit.faculty.TestActivity" android:label="Test Activity" android:exported="false">
         </activity>
 
     </application>
