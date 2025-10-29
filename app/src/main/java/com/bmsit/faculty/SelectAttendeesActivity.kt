@@ -86,7 +86,7 @@ class SelectAttendeesActivity : AppCompatActivity() {
     private fun setupSpinners(departmentSpinner: Spinner, designationSpinner: Spinner) {
         val departments = arrayOf("All", "AIML", "CS", "CSBS", "EEE", "ETE", "ECE", "Mech", "Civil", "ISE")
         // Order by level: Admin, Dean, HOD, Associate, Assistant, Lab Assistant, Others
-        val designations = arrayOf("All", "ADMIN", "DEAN", "HOD", "Associate Professor", "Assistant Professor", "Lab Assistant", "Others")
+        val designations = arrayOf("All", "ADMIN", "DEAN", "HOD", "Associate Professor", "Assistant Professor", "Lab Assistant", "Others", "Developer")
 
         departmentSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, departments)
         designationSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, designations)

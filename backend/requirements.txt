@@ -4,3 +4,4 @@ motor==3.3.2
 pydantic==2.5.0
 pydantic-settings==2.1.0
 python-multipart==0.0.6
+sendgrid==6.10.0

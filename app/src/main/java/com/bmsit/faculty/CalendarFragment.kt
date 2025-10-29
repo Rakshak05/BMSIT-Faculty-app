@@ -58,7 +58,7 @@ class CalendarFragment : Fragment() {
                 allMeetings.clear()
                 for (document in result) {
                     val meeting = document.toObject(Meeting::class.java)
-                    if (meeting.status != "Active") continue
+                    // Unlike DashboardFragment, CalendarFragment shows ALL meetings including cancelled ones
                     val validDesignationsForFacultyMeeting = listOf(
                         "Faculty",
                         "Assistant Professor",

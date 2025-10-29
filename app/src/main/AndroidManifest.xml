@@ -30,6 +30,10 @@
             android:name="com.bmsit.faculty.AlarmActionReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".PeriodicCheckReceiver" android:enabled="true" />
+
+
         <service
             android:name="com.bmsit.faculty.AlarmRingingService"
             android:exported="false"

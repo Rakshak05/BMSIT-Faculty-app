@@ -21,7 +21,8 @@ sealed class MeetingListItem {
 class SectionedMeetingAdapter(
     private val items: List<MeetingListItem>,
     private val listener: MeetingAdapter.OnMeetingInteractionListener,
-    private val currentUserId: String
+    private val currentUserId: String,
+    private val userNamesMap: Map<String, String> // Map of user IDs to display names
 ): RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val TYPE_HEADER = 0
@@ -69,6 +70,7 @@ class SectionedMeetingAdapter(
         private val dateTimeTextView: TextView = itemView.findViewById(R.id.textViewMeetingDateTime)
         private val locationTextView: TextView = itemView.findViewById(R.id.textViewMeetingLocation)
         private val attendeesTextView: TextView = itemView.findViewById(R.id.textViewMeetingAttendees)
+        private val hostTextView: TextView = itemView.findViewById(R.id.textViewMeetingHost)
         private val expandedSection: LinearLayout = itemView.findViewById(R.id.expandedSection)
         private val reminderButton: Button = itemView.findViewById(R.id.buttonSetReminder)
         private val schedulerActionsLayout: LinearLayout = itemView.findViewById(R.id.layoutSchedulerActions)
@@ -122,6 +124,11 @@ class SectionedMeetingAdapter(
             expandedSection.visibility = if (meeting.isExpanded) View.VISIBLE else View.GONE
             val isScheduler = currentUserId == meeting.scheduledBy
             schedulerActionsLayout.visibility = if (isScheduler) View.VISIBLE else View.GONE
+            
+            // Display who hosted the meeting using the user names map
+            val hostName = userNamesMap[meeting.scheduledBy] ?: "Unknown User"
+            hostTextView.text = "Hosted by: $hostName"
+            hostTextView.visibility = View.VISIBLE
         }
     }
 }

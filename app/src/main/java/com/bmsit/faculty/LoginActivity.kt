@@ -1,5 +1,8 @@
 package com.bmsit.faculty
 
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.text.method.HideReturnsTransformationMethod
 import android.text.method.PasswordTransformationMethod
@@ -10,6 +13,7 @@ import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,6 +39,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var showPasswordCheckBox: CheckBox
     private lateinit var loginButton: Button
     private lateinit var createAccountButton: Button
+    private lateinit var googleSignInContainer: LinearLayout
 
     // Simple crash reporting mechanism
     private class CrashHandler : Thread.UncaughtExceptionHandler {
@@ -47,18 +52,35 @@ class LoginActivity : AppCompatActivity() {
 
     private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result -> 
         try {
-            Log.d("LoginActivity", "Google sign in result received")
+            Log.d("LoginActivity", "Google sign in result received with result code: ${result.resultCode}")
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             val account = task.getResult(ApiException::class.java)!!
             firebaseAuthWithGoogle(account)
         } catch (e: ApiException) {
-            Log.e("LoginActivity", "Google Sign-In failed", e)
+            Log.e("LoginActivity", "Google Sign-In failed with code: ${e.statusCode}", e)
             progressBar.visibility = View.GONE
-            Toast.makeText(this, "Google Sign-In failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            // Handle specific error codes with detailed guidance
+            val errorMessage = when (e.statusCode) {
+                7 -> {
+                    "Google Sign-In configuration error (Error 7 - DEVELOPER_ERROR).\n\n" +
+                    "Troubleshooting steps:\n" +
+                    "1. Verify SHA-1 fingerprint in Firebase Console matches your keystore\n" +
+                    "2. Ensure Web client ID in strings.xml is correct\n" +
+                    "3. Check that package name is com.bmsit.faculty\n" +
+                    "4. Make sure Google Play Services is updated\n" +
+                    "5. Verify OAuth consent screen is properly configured in Google Cloud Console"
+                }
+                10 -> "Network error. Please check your internet connection."
+                12500 -> "Google Play Services version is not supported."
+                12501 -> "Google Play Services is not available."
+                12502 -> "Google Play Services update is required."
+                else -> "Google Sign-In failed (Error ${e.statusCode}): ${e.message}"
+            }
+            Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             Log.e("LoginActivity", "Unexpected error in Google Sign-In", e)
             progressBar.visibility = View.GONE
-            Toast.makeText(this, "Unexpected error: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Unexpected error: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -92,15 +114,33 @@ class LoginActivity : AppCompatActivity() {
             db = FirebaseFirestore.getInstance()
             Log.d("LoginActivity", "Firebase instances initialized")
             
+            // Log Firebase configuration for debugging
+            Log.d("LoginActivity", "Firebase app ID: ${getString(R.string.google_app_id)}")
+            
             progressBar = findViewById(R.id.progressBar)
             emailEditText = findViewById(R.id.emailEditText)
             passwordEditText = findViewById(R.id.passwordEditText)
             showPasswordCheckBox = findViewById(R.id.showPasswordCheckBox)
             loginButton = findViewById(R.id.loginButton)
             createAccountButton = findViewById(R.id.createAccountButton)
-            val signInButton = findViewById<SignInButton>(R.id.signInButton)
+            googleSignInContainer = findViewById(R.id.googleSignInContainer)
             Log.d("LoginActivity", "Views found successfully")
-
+            
+            // Check Google Play Services availability
+            val googlePlayAvailability = com.google.android.gms.common.GoogleApiAvailability.getInstance()
+            val resultCode = googlePlayAvailability.isGooglePlayServicesAvailable(this)
+            if (resultCode != com.google.android.gms.common.ConnectionResult.SUCCESS) {
+                Log.w("LoginActivity", "Google Play Services not available. Result code: $resultCode")
+                if (googlePlayAvailability.isUserResolvableError(resultCode)) {
+                    val errorDialog = googlePlayAvailability.getErrorDialog(this, resultCode, 9000)
+                    errorDialog?.show()
+                } else {
+                    Toast.makeText(this, "Google Play Services not available", Toast.LENGTH_LONG).show()
+                }
+            } else {
+                Log.d("LoginActivity", "Google Play Services available")
+            }
+            
             // Set up password visibility toggle
             showPasswordCheckBox.setOnCheckedChangeListener { _, isChecked ->
                 if (isChecked) {
@@ -124,16 +164,31 @@ class LoginActivity : AppCompatActivity() {
                 createEmailPasswordAccount()
             }
 
+            // Configure Google Sign-In with requestIdToken as it's required for Firebase Auth
             val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
                 .build()
             googleSignInClient = GoogleSignIn.getClient(this, gso)
-            Log.d("LoginActivity", "GoogleSignInClient initialized")
+            Log.d("LoginActivity", "GoogleSignInClient initialized WITH Web Client ID")
+            Log.d("LoginActivity", "OAuth client ID: ${getString(R.string.default_web_client_id)}")
+            
+            // Test the Google Sign-In configuration
+            testGoogleSignInConfig()
 
-            signInButton.setOnClickListener {
+            googleSignInContainer.setOnClickListener {
                 try {
-                    Log.d("LoginActivity", "Sign in button clicked")
+                    Log.d("LoginActivity", "Custom Google Sign in button clicked")
+                    // Log configuration information for debugging
+                    Log.d("LoginActivity", "Web client ID: ${getString(R.string.default_web_client_id)}")
+                    Log.d("LoginActivity", "Package name: ${packageName}")
+                    
+                    // Verify package name matches expected value
+                    if (packageName != "com.bmsit.faculty") {
+                        Log.w("LoginActivity", "Package name mismatch. Expected: com.bmsit.faculty, Actual: $packageName")
+                        Toast.makeText(this, "App package name configuration issue", Toast.LENGTH_LONG).show()
+                    }
+                    
                     progressBar.visibility = View.VISIBLE
                     val signInIntent = googleSignInClient.signInIntent
                     googleSignInLauncher.launch(signInIntent)
@@ -161,6 +216,12 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
+        // Validate email domain
+        if (!isValidEmailDomain(email)) {
+            Toast.makeText(this, "Only users with bmsit.in or meetinghubapp@gmail.com email addresses are allowed to access this app", Toast.LENGTH_LONG).show()
+            return
+        }
+
         // Show progress indicator
         progressBar.visibility = View.VISIBLE
 
@@ -178,6 +239,41 @@ class LoginActivity : AppCompatActivity() {
                 }
             }
     }
+    
+    // Method to test Google Sign-In configuration
+    private fun testGoogleSignInConfig() {
+        Log.d("LoginActivity", "Testing Google Sign-In configuration")
+        try {
+            // Check if Google Play Services is available
+            val googleApiAvailability = com.google.android.gms.common.GoogleApiAvailability.getInstance()
+            val resultCode = googleApiAvailability.isGooglePlayServicesAvailable(this)
+            if (resultCode != com.google.android.gms.common.ConnectionResult.SUCCESS) {
+                Log.w("LoginActivity", "Google Play Services not available. Result code: $resultCode")
+                return
+            }
+            
+            // Log configuration details
+            Log.d("LoginActivity", "Package name: $packageName")
+            Log.d("LoginActivity", "Web client ID: ${getString(R.string.default_web_client_id)}")
+            
+            // Verify Web client ID format
+            val webClientId = getString(R.string.default_web_client_id)
+            if (!webClientId.endsWith(".apps.googleusercontent.com")) {
+                Log.w("LoginActivity", "Web client ID format appears incorrect: $webClientId")
+            }
+            
+            // Test if we can get the GoogleSignInClient
+            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(webClientId)
+                .requestEmail()
+                .build()
+            val testClient = GoogleSignIn.getClient(this, gso)
+            Log.d("LoginActivity", "GoogleSignInClient created successfully")
+            
+        } catch (e: Exception) {
+            Log.e("LoginActivity", "Error testing Google Sign-In configuration", e)
+        }
+    }
 
     private fun createEmailPasswordAccount() {
         val email = emailEditText.text.toString().trim()
@@ -186,6 +282,12 @@ class LoginActivity : AppCompatActivity() {
         // Validate input
         if (email.isEmpty() || password.isEmpty()) {
             Toast.makeText(this, "Please enter both email and password", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Validate email domain
+        if (!isValidEmailDomain(email)) {
+            Toast.makeText(this, "Only users with bmsit.in or meetinghubapp@gmail.com email addresses are allowed to access this app", Toast.LENGTH_LONG).show()
             return
         }
 
@@ -210,7 +312,27 @@ class LoginActivity : AppCompatActivity() {
     private fun firebaseAuthWithGoogle(account: GoogleSignInAccount) {
         try {
             Log.d("LoginActivity", "firebaseAuthWithGoogle started")
-            val credential = GoogleAuthProvider.getCredential(account.idToken!!, null)
+            
+            // Validate email domain
+            val email = account.email
+            if (email != null && !isValidEmailDomain(email)) {
+                Log.w("LoginActivity", "Google Sign-In attempt with invalid email domain: $email")
+                progressBar.visibility = View.GONE
+                Toast.makeText(this, "Only users with bmsit.in or meetinghubapp@gmail.com email addresses are allowed to access this app", Toast.LENGTH_LONG).show()
+                return
+            }
+            
+            // We must have an ID token for Firebase authentication
+            val idToken = account.idToken
+            if (idToken == null) {
+                Log.e("LoginActivity", "No ID token received from Google Sign-In")
+                progressBar.visibility = View.GONE
+                Toast.makeText(this, "Google Sign-In failed: No authentication token received", Toast.LENGTH_LONG).show()
+                return
+            }
+            
+            Log.d("LoginActivity", "Using ID token for Firebase authentication")
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
             auth.signInWithCredential(credential)
                 .addOnCompleteListener(this) { task ->
                     try {
@@ -353,18 +475,33 @@ class LoginActivity : AppCompatActivity() {
                                 try {
                                     subscribeToRoleTopics(uid)
                                 } catch (e: Exception) {
-                                    Log.e("LoginActivity", "Error in subscribeToRoleTopics", e)
+                                    Log.e("LoginActivity", "Error in subscribeToRoleTopics after token save", e)
                                     navigateToMain()
                                 }
                             }
                     } catch (e: Exception) {
-                        Log.e("LoginActivity", "Error in FCM token completion handler", e)
+                        Log.e("LoginActivity", "Error processing FCM token", e)
                         navigateToMain()
                     }
                 }
         } catch (e: Exception) {
             Log.e("LoginActivity", "Error in saveFcmToken", e)
             navigateToMain()
+        }
+    }
+
+    /**
+     * Validates if the email belongs to allowed domains
+     * Only users with "bmsit.in" or "meetinghubapp@gmail.com" emails are allowed
+     */
+    private fun isValidEmailDomain(email: String): Boolean {
+        val allowedDomains = listOf("bmsit.in", "meetinghubapp@gmail.com")
+        return allowedDomains.any { domain ->
+            if (domain.contains("@")) {
+                email.equals(domain, ignoreCase = true)
+            } else {
+                email.endsWith("@$domain", ignoreCase = true)
+            }
         }
     }
 
@@ -425,6 +562,8 @@ class LoginActivity : AppCompatActivity() {
         try {
             Log.d("LoginActivity", "navigateToMain called")
             progressBar.visibility = View.GONE
+            // Schedule periodic checks
+            schedulePeriodicCheck()
             // No toast message here, as it can be annoying on auto-login
             val intent = Intent(this, MainActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -434,6 +573,29 @@ class LoginActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("LoginActivity", "Error in navigateToMain", e)
             Toast.makeText(this, "Error navigating to main screen: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+    
+    private fun schedulePeriodicCheck() {
+        try {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val intent = Intent(this, PeriodicCheckReceiver::class.java)
+            val pendingIntent = PendingIntent.getBroadcast(
+                this, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // Check every 15 minutes
+            val interval = 15 * 60 * 1000L
+            alarmManager.setRepeating(
+                AlarmManager.RTC_WAKEUP,
+                System.currentTimeMillis() + interval,
+                interval,
+                pendingIntent
+            )
+            Log.d("LoginActivity", "Periodic check scheduled")
+        } catch (e: Exception) {
+            Log.e("LoginActivity", "Error scheduling periodic check", e)
         }
     }
 }

@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.speech.RecognizerIntent
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -61,6 +62,9 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
     private lateinit var voiceFab: ExtendedFloatingActionButton
     private val voiceNlu: VoiceNlu = VoiceNluRuleBased()
 
+    // Map to store user IDs and their display names
+    private val userNamesMap = mutableMapOf<String, String>()
+    
     private var pendingMeetingForAlarm: Meeting? = null
     private var pendingReminderMinutes: Int = 0
     private var meetingsListener: ListenerRegistration? = null
@@ -69,6 +73,18 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
     
     // Add a set to track notified meetings to prevent duplicates
     private val notifiedMeetingIds = HashSet<String>()
+    
+    // Handler for periodic checks
+    private val handler = Handler()
+    private val periodicCheckRunnable = object : Runnable {
+        override fun run() {
+            // Re-establish listener if needed
+            if (meetingsListener == null) {
+                startListeningMeetings()
+            }
+            handler.postDelayed(this, 30000) // Check every 30 seconds
+        }
+    }
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
@@ -414,6 +430,8 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
     override fun onResume() {
         super.onResume()
         fetchUserDesignationAndThenMeetings()
+        // Start periodic checks
+        handler.postDelayed(periodicCheckRunnable, 30000)
     }
 
     override fun onPause() {
@@ -422,6 +440,8 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
         meetingsListener = null
         // Clear the notified meeting IDs when the fragment is paused
         notifiedMeetingIds.clear()
+        // Remove periodic checks
+        handler.removeCallbacks(periodicCheckRunnable)
     }
 
     override fun onSetReminderClick(meeting: Meeting) {
@@ -626,8 +646,9 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
         val currentUser = auth.currentUser
         if (currentUser != null) {
             try {
+                // Initialize the adapter with an empty user names map initially
                 sectionedAdapter =
-                    SectionedMeetingAdapter(sectionedItems, this, currentUser.uid)
+                    SectionedMeetingAdapter(sectionedItems, this, currentUser.uid, userNamesMap)
                 meetingsRecyclerView.adapter = sectionedAdapter
                 db.collection("users").document(currentUser.uid).get()
                     .addOnSuccessListener { document ->
@@ -799,7 +820,9 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                 for (document in snapshots.documents) {
                     try {
                         val meeting = document.toObject(Meeting::class.java) ?: continue
-                        if (meeting.status != "Active") continue
+                        // When a specific date is selected (from calendar), show all meetings including cancelled ones
+                        // When showing upcoming meetings (no specific date), only show active meetings
+                        if (selectedDate == null && meeting.status != "Active") continue
                         
                         // Debug logging
                         Log.d("DashboardFragment", "Found meeting: ${meeting.title}, DateTime: ${meeting.dateTime.toDate()}, Status: ${meeting.status}")
@@ -849,6 +872,10 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                             }
                         }
                         .forEach { mtg ->
+                            // When a specific date is selected (from calendar), show all meetings including cancelled ones
+                            // When showing upcoming meetings (no specific date), only show active meetings
+                            if (selectedDate == null && mtg.status != "Active") return@forEach
+                            
                             // Only notify if user should see this meeting
                             val validDesignations = listOf(
                                 "Faculty",
@@ -867,7 +894,8 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                                 else -> false
                             }
                             val visibleToUserNow = canSee || mtg.scheduledBy == currentUid
-                            if (visibleToUserNow) showImmediateMeetingNotification(mtg)
+                            // Skip notification if user is a Developer
+                            if (currentUserDesignation != "Developer" && visibleToUserNow) showImmediateMeetingNotification(mtg)
                         }
                 }
                 knownMeetingIds.clear()
@@ -897,8 +925,15 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                     meetingsRecyclerView.visibility = View.VISIBLE
                     Log.d("DashboardFragment", "Showing meetings list with ${meetingList.size} items")
                 }
-                buildSectionedItems()
-                sectionedAdapter.notifyDataSetChanged()
+                
+                // Fetch user names for all meetings before building sectioned items
+                fetchUserNamesForMeetings { 
+                    buildSectionedItems()
+                    // Update the adapter with the user names map
+                    sectionedAdapter = SectionedMeetingAdapter(sectionedItems, this, currentUid, userNamesMap)
+                    meetingsRecyclerView.adapter = sectionedAdapter
+                    sectionedAdapter.notifyDataSetChanged()
+                }
             }
         } catch (e: Exception) {
             Log.e("DashboardFragment", "Error in startListeningMeetings", e)
@@ -914,6 +949,54 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
         }
     }
 
+    /**
+     * Fetches user names for all meetings in the list and calls the callback when done
+     */
+    private fun fetchUserNamesForMeetings(callback: () -> Unit) {
+        // Clear the user names map
+        userNamesMap.clear()
+        
+        // Get unique scheduler IDs from meetings
+        val schedulerIds = meetingList.map { it.scheduledBy }.distinct()
+        
+        // If no meetings or no scheduler IDs, call callback immediately
+        if (schedulerIds.isEmpty()) {
+            callback()
+            return
+        }
+        
+        // Counter to track completed requests
+        var completedRequests = 0
+        val totalRequests = schedulerIds.size
+        
+        // Fetch user data for each scheduler ID
+        schedulerIds.forEach { userId ->
+            db.collection("users").document(userId).get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        val user = document.toObject(User::class.java)
+                        userNamesMap[userId] = user?.name ?: "Unknown User"
+                    } else {
+                        userNamesMap[userId] = "Unknown User"
+                    }
+                    
+                    completedRequests++
+                    // If all requests are completed, call the callback
+                    if (completedRequests == totalRequests) {
+                        callback()
+                    }
+                }
+                .addOnFailureListener {
+                    userNamesMap[userId] = "Unknown User"
+                    completedRequests++
+                    // If all requests are completed, call the callback
+                    if (completedRequests == totalRequests) {
+                        callback()
+                    }
+                }
+        }
+    }
+    
     fun ensureNotifChannel(ctx: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channelId = "meetings_channel"

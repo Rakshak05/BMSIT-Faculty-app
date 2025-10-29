@@ -52,6 +52,17 @@
             android:textSize="13sp"
             android:textColor="@color/text_secondary" />
 
+        <!-- Added TextView to show who hosted the meeting -->
+        <TextView
+            android:id="@+id/textViewMeetingHost"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Hosted by: "
+            android:textSize="13sp"
+            android:textColor="@color/text_secondary"
+            android:textStyle="italic" />
+
         <!-- This section will be hidden/shown on click -->
         <LinearLayout
             android:id="@+id/expandedSection"
@@ -102,4 +113,3 @@
 
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
-

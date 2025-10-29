@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .routes import notifications
+from .routes import notifications, email_notifications
 from .database.database import connect_to_mongo, close_mongo_connection
 from .config import settings
 
@@ -14,6 +14,7 @@ async def shutdown_event():
     await close_mongo_connection()
 
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
+app.include_router(email_notifications.router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():

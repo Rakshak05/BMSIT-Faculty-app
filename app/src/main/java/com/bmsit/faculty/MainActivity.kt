@@ -1,6 +1,10 @@
 package com.bmsit.faculty
 
 import androidx.appcompat.app.AppCompatActivity
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.MenuItem
 import android.widget.Toast
@@ -29,6 +33,9 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             Log.d("MainActivity", "onCreate started")
             setContentView(R.layout.activity_main)
             Log.d("MainActivity", "Layout inflated successfully")
+
+            // Schedule periodic checks
+            schedulePeriodicCheck()
 
             auth = FirebaseAuth.getInstance()
             db = FirebaseFirestore.getInstance()
@@ -67,6 +74,29 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         } catch (e: Exception) {
             Log.e("MainActivity", "Critical error in onCreate", e)
             Toast.makeText(this, "Critical error initializing main activity: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun schedulePeriodicCheck() {
+        try {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val intent = Intent(this, PeriodicCheckReceiver::class.java)
+            val pendingIntent = PendingIntent.getBroadcast(
+                this, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // Check every 15 minutes
+            val interval = 15 * 60 * 1000L
+            alarmManager.setRepeating(
+                AlarmManager.RTC_WAKEUP,
+                System.currentTimeMillis() + interval,
+                interval,
+                pendingIntent
+            )
+            Log.d("MainActivity", "Periodic check scheduled")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error scheduling periodic check", e)
         }
     }
 
@@ -110,8 +140,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                                 // Make admin panel accessible to ADMIN users, with a fallback check
                                 adminMenuItem.isVisible = (userDesignation == "ADMIN" || userDesignation == "DEAN" || userDesignation == "HOD")
                                 
-                                // Show diagnostic tools to all users for debugging
-                                diagnosticMenuItem.isVisible = true
+                                // Show diagnostic tools only to Developers
+                                diagnosticMenuItem.isVisible = (userDesignation == "Developer")
                                 
                                 // If designation is null or Unassigned, still allow access to admin panel for ADMIN users
                                 // This handles cases where the designation might not have been updated yet
@@ -146,7 +176,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                                 Log.d("MainActivity", "User menu setup completed")
                             } else {
                                 adminMenuItem.isVisible = false
-                                diagnosticMenuItem.isVisible = true
+                                diagnosticMenuItem.isVisible = false
                                 val displayName = currentUser.displayName?.trim()
                                 if (!displayName.isNullOrBlank()) {
                                     headerGreeting?.text = "Welcome back, $displayName"
@@ -165,24 +195,35 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                             }
                         } catch (e: Exception) {
                             Log.e("MainActivity", "Error processing user document", e)
+                            // Check if it's a permission error
+                            if (e.message?.contains("PERMISSION_DENIED") == true) {
+                                Log.e("MainActivity", "PERMISSION_DENIED error: Check Firebase Firestore rules")
+                                Toast.makeText(this, "PERMISSION_DENIED ERROR: The app needs read access to the 'users' collection. Update Firebase Firestore security rules. See FIREBASE_RULES_FIX.md for instructions.", Toast.LENGTH_LONG).show()
+                            }
                             adminMenuItem.isVisible = true // Fallback to visible for ADMIN users
-                            diagnosticMenuItem.isVisible = true // Also keep diagnostic visible for debugging
+                            diagnosticMenuItem.isVisible = false // Keep diagnostic hidden by default on error
                         }
                     }
-                    .addOnFailureListener { 
+                    .addOnFailureListener { exception ->
                         try {
+                            // Check if it's a permission error
+                            if (exception.message?.contains("PERMISSION_DENIED") == true) {
+                                Log.e("MainActivity", "PERMISSION_DENIED error: Check Firebase Firestore rules")
+                                Toast.makeText(this, "PERMISSION_DENIED ERROR: The app needs read access to the 'users' collection. Update Firebase Firestore security rules. See FIREBASE_RULES_FIX.md for instructions.", Toast.LENGTH_LONG).show()
+                            }
+                            
                             // Even if we fail to fetch user data, don't hide the admin menu for ADMIN users
                             // This prevents the menu from disappearing due to network issues
                             Log.w("MainActivity", "Failed to fetch user data, keeping admin menu visible for ADMIN users")
                             adminMenuItem.isVisible = true // Fallback to visible for ADMIN users
-                            diagnosticMenuItem.isVisible = true // Also keep diagnostic visible for debugging
+                            diagnosticMenuItem.isVisible = false // Keep diagnostic hidden by default on error
                         } catch (e: Exception) {
                             Log.e("MainActivity", "Error in failure handler", e)
                         }
                     }
             } else {
                 adminMenuItem.isVisible = false
-                diagnosticMenuItem.isVisible = true
+                diagnosticMenuItem.isVisible = false
                 headerGreeting?.text = "Welcome back,"
                 headerInitials?.text = "?"
                 Log.d("MainActivity", "No current user, using default menu setup")
@@ -200,7 +241,16 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 R.id.nav_dashboard -> replaceFragment(DashboardFragment())
                 R.id.nav_calendar -> replaceFragment(CalendarFragment())
                 R.id.nav_profile -> replaceFragment(ProfileFragment())
-                R.id.nav_admin -> replaceFragment(AdminFragment())
+                R.id.nav_admin -> {
+                    try {
+                        replaceFragment(AdminFragment())
+                    } catch (e: Exception) {
+                        Log.e("MainActivity", "Error creating AdminFragment", e)
+                        Toast.makeText(this, "Error accessing admin panel: ${e.message}", Toast.LENGTH_LONG).show()
+                        // Try to load dashboard as fallback
+                        replaceFragment(DashboardFragment())
+                    }
+                }
                 R.id.nav_diagnostic -> replaceFragment(DiagnosticFragment())
             }
 
@@ -217,13 +267,24 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private fun replaceFragment(fragment: Fragment) {
         try {
             Log.d("MainActivity", "replaceFragment called for ${fragment.javaClass.simpleName}")
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, fragment)
-                .commit()
+            val transaction = supportFragmentManager.beginTransaction()
+            transaction.replace(R.id.fragment_container, fragment)
+            transaction.commit()
             Log.d("MainActivity", "Fragment replaced successfully")
         } catch (e: Exception) {
             Log.e("MainActivity", "Error in replaceFragment", e)
             Toast.makeText(this, "Error loading fragment: ${e.message}", Toast.LENGTH_SHORT).show()
+            
+            // Try to show a fallback fragment
+            try {
+                val transaction = supportFragmentManager.beginTransaction()
+                transaction.replace(R.id.fragment_container, DashboardFragment())
+                transaction.commit()
+                Toast.makeText(this, "Failed to load requested fragment. Showing dashboard instead.", Toast.LENGTH_LONG).show()
+            } catch (fallbackException: Exception) {
+                Log.e("MainActivity", "Error loading fallback fragment", fallbackException)
+                Toast.makeText(this, "Critical error: Unable to load any fragment. Please restart the app.", Toast.LENGTH_LONG).show()
+            }
         }
     }
 

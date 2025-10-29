@@ -232,6 +232,11 @@ class ScheduleMeetingActivity : AppCompatActivity() {
                     .addOnSuccessListener { result ->
                         for (doc in result) {
                             val userId = doc.id
+                            // Skip users with "Developer" designation
+                            val userDesignation = doc.getString("designation")
+                            if (userDesignation == "Developer") {
+                                continue
+                            }
                             if (userId != newMeeting.scheduledBy) { // Don't notify the scheduler
                                 createNotificationForUser(userId, newMeeting)
                             }
@@ -270,7 +275,19 @@ class ScheduleMeetingActivity : AppCompatActivity() {
                 // Notify custom attendees
                 newMeeting.customAttendeeUids.forEach { userId ->
                     if (userId != newMeeting.scheduledBy) { // Don't notify the scheduler
-                        createNotificationForUser(userId, newMeeting)
+                        // Check if the user has "Developer" designation before notifying
+                        db.collection("users").document(userId).get()
+                            .addOnSuccessListener { doc ->
+                                val userDesignation = doc.getString("designation")
+                                if (userDesignation != "Developer") {
+                                    createNotificationForUser(userId, newMeeting)
+                                }
+                            }
+                            .addOnFailureListener {
+                                // If we can't get the user's designation, still notify them
+                                // to avoid missing notifications
+                                createNotificationForUser(userId, newMeeting)
+                            }
                     }
                 }
             }

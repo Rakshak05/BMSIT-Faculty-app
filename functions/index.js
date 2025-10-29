@@ -154,7 +154,24 @@ function formatTime(tsMillis) {
 
 async function getTargetUids(meeting) {
   if (meeting.attendees === 'Custom' && Array.isArray(meeting.customAttendeeUids)) {
-    return meeting.customAttendeeUids;
+    // For custom attendees, we need to check each user's designation
+    const validUids = [];
+    for (const uid of meeting.customAttendeeUids) {
+      try {
+        const userDoc = await db.collection('users').doc(uid).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          // Skip users with "Developer" designation
+          if (userData.designation !== 'Developer') {
+            validUids.push(uid);
+          }
+        }
+      } catch (error) {
+        // If we can't get the user data, skip this user
+        console.error('Error getting user data for uid:', uid, error);
+      }
+    }
+    return validUids;
   }
   const roleMap = {
     'All Faculty': [
@@ -165,6 +182,7 @@ async function getTargetUids(meeting) {
   };
   const allowed = roleMap[meeting.attendees] || [];
   if (!allowed.length) return [];
+  // Also exclude Developers from the query
   const snap = await db.collection('users').where('designation', 'in', allowed).get();
   return snap.docs.map(d => d.id);
 }
@@ -196,9 +214,29 @@ async function sendToTokens(tokens, payload) {
 
 async function notifyUsersByUids(uids, notif) {
   if (!uids.length) return;
+  // Filter out Developers before sending notifications
+  const filteredUids = [];
+  for (const uid of uids) {
+    try {
+      const userDoc = await db.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        // Skip users with "Developer" designation
+        if (userData.designation !== 'Developer') {
+          filteredUids.push(uid);
+        }
+      }
+    } catch (error) {
+      // If we can't get the user data, include them to avoid missing notifications
+      filteredUids.push(uid);
+    }
+  }
+  
+  if (!filteredUids.length) return;
+  
   const chunks = []; // chunk uids to limit getAll size
   const size = 10;
-  for (let i = 0; i < uids.length; i += size) chunks.push(uids.slice(i, i + size));
+  for (let i = 0; i < filteredUids.length; i += size) chunks.push(filteredUids.slice(i, i + size));
   for (const chunk of chunks) {
     const refs = chunk.map(uid => db.collection('users').doc(uid));
     const docs = await db.getAll(...refs);
@@ -267,5 +305,20 @@ exports.onMeetingUpdate = functions.firestore.document('meetings/{meetingId}').o
       data: { type: 'rescheduled', meetingId: ctx.params.meetingId }
     };
     await notifyUsersByUids(uids, payload);
+  }
+});
+
+// Function to initialize meetings collection
+exports.initializeMeetings = functions.https.onRequest(async (req, res) => {
+  try {
+    // Create and immediately delete a temporary document to initialize the collection
+    const tempRef = db.collection('meetings').doc('temp-init');
+    await tempRef.set({ initialized: true, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+    await tempRef.delete();
+    
+    res.status(200).send('Meetings collection initialized successfully');
+  } catch (error) {
+    console.error('Error initializing meetings collection:', error);
+    res.status(500).send('Error initializing meetings collection: ' + error.message);
   }
 });

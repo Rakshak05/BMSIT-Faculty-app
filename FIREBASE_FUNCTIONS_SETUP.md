@@ -6,6 +6,10 @@ The app is not receiving notifications when closed because the Firebase Cloud Fu
 ## Solution
 Deploy the Firebase Cloud Functions that trigger on Firestore events and send FCM notifications to users.
 
+**NOTE**: Alternative solutions that do not require the Firebase Blaze plan are available:
+1. [Self-Hosted Notification System](SELF_HOSTED_NOTIFICATIONS_ALTERNATIVE.md) (polling-based, works only when app is running)
+2. [Email Notifications via SendGrid](EMAIL_NOTIFICATIONS_SETUP.md) (email-based, works even when app is closed)
+
 ## Prerequisites
 
 1. **Firebase Project**: You need to have a Firebase project set up (bmsit-faculty-30834)
@@ -103,6 +107,20 @@ firebase functions:log
 ```bash
 firebase functions:list
 ```
+
+## Alternative Solutions (No Blaze Plan Required)
+
+### 1. Self-Hosted Notification System
+
+If you prefer not to upgrade to the Firebase Blaze plan, you can use the self-hosted notification system instead. This approach uses your existing backend infrastructure to generate notifications through a polling mechanism.
+
+See [SELF_HOSTED_NOTIFICATIONS_ALTERNATIVE.md](SELF_HOSTED_NOTIFICATIONS_ALTERNATIVE.md) for complete implementation details.
+
+### 2. Email Notifications via SendGrid
+
+For notifications that work even when the app is closed, you can use email notifications via SendGrid. This approach sends email notifications to users when meetings are created, cancelled, or rescheduled.
+
+See [EMAIL_NOTIFICATIONS_SETUP.md](EMAIL_NOTIFICATIONS_SETUP.md) for complete implementation details.
 
 ## Additional Notes
 
