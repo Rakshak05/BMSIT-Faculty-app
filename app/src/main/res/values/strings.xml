@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">BMSIT Faculty</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <!-- Required for Google Sign-In: replace with your actual Web client ID from Firebase Console -->
+    <string name="default_web_client_id">62655805338-04kr0.apps.googleusercontent.com</string>
+</resources>
