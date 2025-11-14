@@ -7,18 +7,40 @@
     android:padding="16dp"
     tools:context=".ProfileFragment">
 
-    <!-- Profile Picture Placeholder -->
-    <ImageView
-        android:id="@+id/imageViewProfile"
+    <!-- Profile Picture Section -->
+    <FrameLayout
+        android:id="@+id/frameLayoutProfilePicture"
         android:layout_width="120dp"
         android:layout_height="120dp"
         android:layout_marginTop="32dp"
-        android:background="@drawable/ic_profile"
-        android:backgroundTint="?attr/colorPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:ignore="ContentDescription" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- Profile Picture -->
+        <ImageView
+            android:id="@+id/imageViewProfile"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/circular_profile_background"
+            android:scaleType="centerCrop"
+            android:clipToOutline="true"
+            tools:ignore="ContentDescription" />
+
+        <!-- REMOVED: Edit Profile Picture Icon 
+        <ImageView
+            android:id="@+id/imageViewEditProfilePicture"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="4dp"
+            android:background="@drawable/ic_edit"
+            android:backgroundTint="?attr/colorOnPrimary"
+            android:visibility="gone"
+            tools:visibility="visible" />
+        -->
+
+    </FrameLayout>
 
     <!-- User Name TextView -->
     <TextView
@@ -28,22 +50,44 @@
         android:layout_marginTop="24dp"
         android:textSize="24sp"
         android:textStyle="bold"
+        android:textColor="?android:attr/textColorPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/imageViewProfile"
+        app:layout_constraintTop_toBottomOf="@id/frameLayoutProfilePicture"
         tools:text="Rakshak" />
 
-    <!-- User Department TextView -->
-    <TextView
-        android:id="@+id/textViewProfileDepartment"
+    <!-- User Department and Designation Section -->
+    <LinearLayout
+        android:id="@+id/linearLayoutDepartmentDesignation"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:textSize="16sp"
+        android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/textViewProfileName"
-        tools:text="CS" />
+        app:layout_constraintTop_toBottomOf="@id/textViewProfileName">
+
+        <!-- User Department TextView -->
+        <TextView
+            android:id="@+id/textViewProfileDepartment"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textColor="?android:attr/textColorSecondary"
+            tools:text="CS" />
+
+        <!-- Edit Icon for Department/Designation (Initially hidden) -->
+        <ImageView
+            android:id="@+id/imageViewEditDepartmentDesignation"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8dp"
+            android:src="@drawable/ic_edit"
+            android:visibility="gone"
+            app:tint="?attr/colorPrimary"
+            tools:visibility="visible" />
+
+    </LinearLayout>
 
     <!-- User Email TextView -->
     <TextView
@@ -52,11 +96,150 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:textSize="16sp"
+        android:textColor="?android:attr/textColorSecondary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/textViewProfileDepartment"
+        app:layout_constraintTop_toBottomOf="@id/linearLayoutDepartmentDesignation"
         tools:text="rakshak@bmsit.in" />
 
+    <!-- Meeting Statistics Section -->
+    <TextView
+        android:id="@+id/textViewMeetingStatsTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="Meeting Statistics"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="?android:attr/textColorPrimary"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textViewProfileEmail" />
+
+    <!-- Meetings Attended Card -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardMeetingsAttended"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="8dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="4dp"
+        app:layout_constraintEnd_toStartOf="@id/cardMeetingsMissed"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textViewMeetingStatsTitle">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Meetings Attended"
+                android:textAlignment="center"
+                android:textSize="16sp"
+                android:textColor="?android:attr/textColorPrimary" />
+
+            <TextView
+                android:id="@+id/textViewMeetingsAttendedCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="0"
+                android:textAlignment="center"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary" />
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Meetings Missed Card -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardMeetingsMissed"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="16dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/cardMeetingsAttended"
+        app:layout_constraintTop_toBottomOf="@id/textViewMeetingStatsTitle">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Meetings Missed"
+                android:textAlignment="center"
+                android:textSize="16sp"
+                android:textColor="?android:attr/textColorPrimary" />
+
+            <TextView
+                android:id="@+id/textViewMeetingsMissedCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="0"
+                android:textAlignment="center"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary" />
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Minutes of Meeting Card -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardMinutesOfMeeting"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cardMeetingsAttended">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Total Meeting Hours"
+                android:textAlignment="center"
+                android:textSize="16sp"
+                android:textColor="?android:attr/textColorPrimary" />
+
+            <TextView
+                android:id="@+id/textViewMinutesOfMeeting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="0 hrs"
+                android:textAlignment="center"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary" />
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- Sign Out Button -->
     <Button
@@ -70,4 +253,3 @@
         app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
-

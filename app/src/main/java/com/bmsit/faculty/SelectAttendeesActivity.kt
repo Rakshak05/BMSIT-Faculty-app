@@ -24,12 +24,16 @@ class SelectAttendeesActivity : AppCompatActivity() {
     private lateinit var db: FirebaseFirestore
     private lateinit var adapter: SelectableUserAdapter
     private val allUsers = mutableListOf<User>()
+    private var preSelectedUids: ArrayList<String>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_select_attendees)
 
         db = FirebaseFirestore.getInstance()
+        
+        // Get pre-selected UIDs from intent if available
+        preSelectedUids = intent.getStringArrayListExtra("SELECTED_UIDS")
 
         val departmentSpinner = findViewById<Spinner>(R.id.spinnerFilterDepartment)
         val designationSpinner = findViewById<Spinner>(R.id.spinnerFilterDesignation)
@@ -43,6 +47,12 @@ class SelectAttendeesActivity : AppCompatActivity() {
         fetchAllUsers {
             adapter = SelectableUserAdapter(allUsers)
             recyclerView.adapter = adapter
+            
+            // Pre-select users if UIDs were provided
+            if (preSelectedUids != null) {
+                preSelectUsers(preSelectedUids!!)
+            }
+            
             setupSpinners(departmentSpinner, designationSpinner)
             // Defaults
             adapter.setFilters(department = "All", designation = "All")
@@ -82,11 +92,24 @@ class SelectAttendeesActivity : AppCompatActivity() {
             }
         }
     }
+    
+    private fun preSelectUsers(uids: ArrayList<String>) {
+        // Find users with matching UIDs and pre-select them
+        val usersToSelect = allUsers.filter { uids.contains(it.uid) }
+        for (user in usersToSelect) {
+            adapter.selectUser(user)
+        }
+    }
 
     private fun setupSpinners(departmentSpinner: Spinner, designationSpinner: Spinner) {
-        val departments = arrayOf("All", "AIML", "CS", "CSBS", "EEE", "ETE", "ECE", "Mech", "Civil", "ISE")
-        // Order by level: Admin, Dean, HOD, Associate, Assistant, Lab Assistant, Others
-        val designations = arrayOf("All", "ADMIN", "DEAN", "HOD", "Associate Professor", "Assistant Professor", "Lab Assistant", "Others", "Developer")
+        // For future reference, other departments were:
+        // "CS", "CSBS", "EEE", "ETE", "ECE", "Mech", "Civil", "ISE"
+        val departments = arrayOf("All", "AIML") // Only keeping AIML as per new requirements
+
+        // For future reference, other designations were:
+        // "ADMIN", "DEAN", "Others", "Developer"
+        // Also keeping "All" for filtering purposes
+        val designations = arrayOf("All", "HOD", "Associate Professor", "Assistant Professor", "Lab Assistant", "HOD's Assistant")
 
         departmentSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, departments)
         designationSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, designations)
@@ -120,4 +143,3 @@ class SelectAttendeesActivity : AppCompatActivity() {
             }
     }
 }
-

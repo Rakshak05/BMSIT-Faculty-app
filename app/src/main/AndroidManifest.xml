@@ -10,6 +10,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
         android:allowBackup="true"
@@ -32,6 +33,9 @@
 
         <receiver
             android:name=".PeriodicCheckReceiver" android:enabled="true" />
+            
+        <receiver
+            android:name=".AutoEndMeetingReceiver" android:enabled="true" />
 
 
         <service
@@ -59,9 +63,25 @@
         <activity android:name="com.bmsit.faculty.MainActivity" android:exported="false" />
         <activity android:name="com.bmsit.faculty.ScheduleMeetingActivity" android:label="Schedule Meeting" android:exported="false" />
         <activity android:name="com.bmsit.faculty.EditMeetingActivity" android:label="Edit Meeting" android:exported="false" />
-        <activity android:name="com.bmsit.faculty.SelectAttendeesActivity" android:label="Select Attendees" android:exported="false" />
+        <activity android:name="com.bmsit.faculty.SelectAttendeesActivity" android:label="Select Participants" android:exported="false" />
+        <activity android:name="com.bmsit.faculty.AttendanceActivity" android:label="Take Attendance" android:exported="false" />
+        <activity android:name="com.bmsit.faculty.MissedMeetingsActivity" android:label="Missed Meetings" android:exported="false" />
+        <activity android:name="com.bmsit.faculty.AttendedMeetingsActivity" android:label="Attended Meetings" android:exported="false" />
+        <activity android:name="com.bmsit.faculty.MeetingTranscriptionActivity" android:label="Meeting Transcription" android:exported="false" />
+        <activity android:name="com.bmsit.faculty.MeetingsForDateActivity" android:label="Meetings for Date" android:exported="false" />
         <activity android:name="com.bmsit.faculty.TestActivity" android:label="Test Activity" android:exported="false">
         </activity>
+
+        <!-- File Provider for CSV Export -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 

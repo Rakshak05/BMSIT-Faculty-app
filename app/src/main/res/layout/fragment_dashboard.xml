@@ -14,8 +14,47 @@
         android:text="Upcoming Meetings"
         android:textSize="24sp"
         android:textStyle="bold"
+        android:textColor="?android:attr/textColorPrimary"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Current Meetings Section -->
+    <TextView
+        android:id="@+id/textViewCurrentMeetingsTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Current Meetings"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="?android:attr/textColorPrimary"
+        android:layout_marginTop="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textViewTitle" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/currentMeetingsRecyclerView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textViewCurrentMeetingsTitle"
+        tools:listitem="@layout/item_current_meeting"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/textViewCurrentMeetingsEmpty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="No current meetings"
+        android:textSize="16sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:layout_marginTop="8dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/textViewCurrentMeetingsTitle"
+        tools:visibility="visible" />
 
     <!-- Extended FAB to schedule a meeting (visible for admins/HODs/Deans) -->
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
@@ -52,7 +91,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/textViewTitle"
+        app:layout_constraintTop_toBottomOf="@id/currentMeetingsRecyclerView"
         tools:listitem="@layout/item_meeting"
         tools:visibility="visible" />
 
@@ -76,12 +115,12 @@
         android:layout_height="wrap_content"
         android:text="No upcoming meetings scheduled."
         android:textSize="18sp"
+        android:textColor="?android:attr/textColorPrimary"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/textViewTitle"
+        app:layout_constraintTop_toBottomOf="@id/textViewCurrentMeetingsTitle"
         tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
-

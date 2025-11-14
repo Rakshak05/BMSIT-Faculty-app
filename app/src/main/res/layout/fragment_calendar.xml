@@ -14,7 +14,7 @@
         android:padding="16dp">
 
         <Button
-            android:id="@+id/buttonPreviousMonth"
+            android:id="@+id/buttonPrevious"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Prev" />
@@ -30,13 +30,15 @@
             android:textStyle="bold" />
 
         <Button
-            android:id="@+id/buttonNextMonth"
+            android:id="@+id/buttonNext"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Next" />
     </LinearLayout>
 
+    <!-- Day headers for month view -->
     <LinearLayout
+        android:id="@+id/layoutDayHeaders"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -51,7 +53,7 @@
         <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Sat" android:textAlignment="center" />
     </LinearLayout>
 
-
+    <!-- RecyclerView for calendar content -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/calendarRecyclerView"
         android:layout_width="match_parent"
@@ -59,4 +61,3 @@
         android:padding="16dp"/>
 
 </LinearLayout>
-

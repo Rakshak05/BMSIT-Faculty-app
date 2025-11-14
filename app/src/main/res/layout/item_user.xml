@@ -2,37 +2,55 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
+    android:orientation="horizontal"
     android:padding="16dp">
 
-    <TextView
-        android:id="@+id/textViewUserName"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="User Name"
-        android:textSize="18sp"
-        android:textStyle="bold" />
+    <!-- Profile Picture Container -->
+    <FrameLayout
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginEnd="16dp">
+        
+        <ImageView
+            android:id="@+id/imageViewProfilePicture"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:background="@drawable/circular_image"
+            android:clipToOutline="true" />
+    </FrameLayout>
 
-    <TextView
-        android:id="@+id/textViewUserEmail"
-        android:layout_width="wrap_content"
+    <!-- User Information -->
+    <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="user@bmsit.in"
-        android:textSize="14sp" />
+        android:layout_weight="1"
+        android:orientation="vertical">
 
+        <TextView
+            android:id="@+id/textViewUserName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="User Name"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary" />
 
-    <!-- NEW: TextView for Department -->
-    <TextView
-        android:id="@+id/textViewUserDepartment"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Dept: Unassigned" />
+        <!-- NEW: TextView for Department -->
+        <TextView
+            android:id="@+id/textViewUserDepartment"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Dept: Unassigned"
+            android:textColor="?android:attr/textColorSecondary" />
 
-    <!-- NEW: TextView for Designation -->
-    <TextView
-        android:id="@+id/textViewUserDesignation"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Designation: Unassigned" />
+        <!-- NEW: TextView for Designation -->
+        <TextView
+            android:id="@+id/textViewUserDesignation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Designation: Unassigned"
+            android:textColor="?android:attr/textColorSecondary" />
+    </LinearLayout>
 
 </LinearLayout>

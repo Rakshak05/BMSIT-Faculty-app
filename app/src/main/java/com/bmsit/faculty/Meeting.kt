@@ -16,6 +16,12 @@ data class Meeting(
     val customAttendeeUids: List<String> = emptyList(),
     // --- NEW: Status of the meeting (e.g., Active, Cancelled) ---
     val status: String = "Active",
+    // --- NEW: Actual end time of the meeting ---
+    val endTime: Timestamp? = null,
+    // --- NEW: Duration of the meeting in minutes ---
+    val duration: Int = 60, // Default to 60 minutes (1 hour)
+    // --- NEW: Timestamp when attendance was taken ---
+    val attendanceTakenAt: Timestamp? = null,
 
     @get:Exclude var isExpanded: Boolean = false
 )

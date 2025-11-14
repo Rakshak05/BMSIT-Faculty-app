@@ -9,7 +9,13 @@
     <color name="white">#FFFFFFFF</color>
     <!-- Add this new red color for error text -->
     <color name="red_error">#D32F2F</color>
+    <color name="colorError">#D32F2F</color>
     <!-- Text colors (light theme) -->
     <color name="text_primary">#FF000000</color>
     <color name="text_secondary">#99000000</color>
+    <!-- Meeting background colors -->
+    <color name="hosted_meeting_background">#4CAF50</color> <!-- Green -->
+    <color name="attended_meeting_background">#2196F3</color> <!-- Blue -->
+    <color name="missed_meeting_background">#F44336</color> <!-- Red -->
+    <color name="both_meeting_background">#9C27B0</color> <!-- Purple -->
 </resources>

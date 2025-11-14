@@ -11,9 +11,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:text="Select Attendees"
+        android:text="Select Participants"
         android:textSize="24sp"
         android:textStyle="bold"
+        android:textColor="?android:attr/textColorPrimary"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -24,6 +25,8 @@
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:hint="Search by name"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textColorHint="?android:attr/textColorSecondary"
         app:layout_constraintTop_toBottomOf="@id/textViewSelectTitle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
@@ -61,13 +64,15 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
-            android:text="Sort by Designation"/>
+            android:text="Sort by Designation"
+            android:textColor="?android:attr/textColorPrimary"/>
         <RadioButton
             android:id="@+id/radioSortDepartment"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="24dp"
-            android:text="Sort by Department"/>
+            android:text="Sort by Department"
+            android:textColor="?android:attr/textColorPrimary"/>
     </RadioGroup>
 
     <androidx.recyclerview.widget.RecyclerView

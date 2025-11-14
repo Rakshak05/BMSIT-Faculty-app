@@ -18,6 +18,7 @@
             android:text="Schedule a New Meeting"
             android:textSize="24sp"
             android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
@@ -28,6 +29,8 @@
             android:layout_marginTop="24dp"
             android:hint="Meeting Title / Reason"
             android:inputType="textCapSentences"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textColorHint="?android:attr/textColorSecondary"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/textViewScheduleTitle" />
@@ -39,6 +42,8 @@
             android:layout_marginTop="16dp"
             android:hint="Location (e.g., Conference Hall)"
             android:inputType="textCapWords"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textColorHint="?android:attr/textColorSecondary"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/editTextMeetingTitle" />
@@ -69,6 +74,30 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/buttonPickDate" />
 
+        <!-- Duration Selection -->
+        <TextView
+            android:id="@+id/textViewDurationLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Meeting Duration"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/buttonPickTime" />
+
+        <Spinner
+            android:id="@+id/spinnerDuration"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:padding="12dp"
+            android:layout_marginTop="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/textViewDurationLabel" />
+
         <!-- Attendee Spinner -->
         <Spinner
             android:id="@+id/spinnerAttendees"
@@ -79,7 +108,7 @@
             android:layout_marginTop="16dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/buttonPickTime" />
+            app:layout_constraintTop_toBottomOf="@id/spinnerDuration" />
 
         <!-- Select Attendees Button (visible only for Custom) -->
         <Button

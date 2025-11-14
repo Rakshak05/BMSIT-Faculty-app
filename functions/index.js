@@ -322,3 +322,176 @@ exports.initializeMeetings = functions.https.onRequest(async (req, res) => {
     res.status(500).send('Error initializing meetings collection: ' + error.message);
   }
 });
+
+// Function to automatically end meetings based on time constraints
+exports.autoEndMeetings = functions.pubsub.schedule('every 5 minutes from 06:00 to 23:59').timeZone('Asia/Kolkata').onRun(async (context) => {
+  try {
+    const now = new Date();
+    const sixHoursInMillis = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+    
+    // Get all active meetings
+    const snapshot = await db.collection('meetings')
+      .where('status', '==', 'Active')
+      .where('dateTime', '<=', admin.firestore.Timestamp.fromDate(now))
+      .get();
+    
+    const batch = db.batch();
+    let endedMeetings = 0;
+    
+    for (const doc of snapshot.docs) {
+      const meeting = doc.data();
+      const meetingStartTime = meeting.dateTime.toDate();
+      
+      // Check if meeting should be ended automatically
+      const shouldEnd = shouldAutoEndMeeting(meetingStartTime, now);
+      
+      if (shouldEnd) {
+        // Set end time to now
+        batch.update(doc.ref, {
+          endTime: admin.firestore.Timestamp.fromDate(now),
+          status: 'Completed'
+        });
+        endedMeetings++;
+      }
+    }
+    
+    if (endedMeetings > 0) {
+      await batch.commit();
+      console.log(`Auto-ended ${endedMeetings} meetings`);
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error in autoEndMeetings:', error);
+    return null;
+  }
+});
+
+// Helper function to determine if a meeting should be auto-ended
+function shouldAutoEndMeeting(startTime, currentTime) {
+  const durationInMillis = currentTime.getTime() - startTime.getTime();
+  
+  // End if meeting has been going on for more than 6 hours
+  if (durationInMillis > 6 * 60 * 60 * 1000) {
+    return true;
+  }
+  
+  // End if current time is past 9 PM
+  const currentHour = currentTime.getHours();
+  if (currentHour >= 21) { // 21:00 is 9 PM
+    return true;
+  }
+  
+  return false;
+}
+
+// Function to transcribe audio files using Google Cloud Speech-to-Text
+exports.transcribeAudio = functions.firestore
+  .document('meeting_recordings/{recordingId}')
+  .onCreate(async (snap, context) => {
+    try {
+      const recording = snap.data();
+      const recordingId = context.params.recordingId;
+      
+      console.log('Processing recording for transcription:', recordingId);
+      
+      // Check if this is a valid recording
+      if (!recording || !recording.fileName || !recording.meetingId) {
+        console.log('Invalid recording data');
+        return null;
+      }
+      
+      // Update status to processing
+      await snap.ref.update({
+        status: 'processing',
+        processingStartedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // Initialize the Speech client
+      const speech = require('@google-cloud/speech');
+      const client = new speech.SpeechClient();
+      
+      // Get the audio file from Firebase Storage
+      const storage = admin.storage();
+      const bucket = storage.bucket(); // Uses default bucket
+      const file = bucket.file(recording.fileName);
+      
+      // Get file metadata to determine encoding
+      const [metadata] = await file.getMetadata();
+      const contentType = metadata.contentType || 'audio/mp3';
+      
+      // Configure the speech recognition request based on file type
+      let config = {
+        encoding: 'LINEAR16',
+        sampleRateHertz: 16000,
+        languageCode: 'en-US',
+      };
+      
+      // Adjust configuration based on file type
+      if (contentType.includes('mp3') || contentType.includes('mpeg')) {
+        config.encoding = 'MP3';
+      } else if (contentType.includes('wav')) {
+        config.encoding = 'LINEAR16';
+      } else if (contentType.includes('flac')) {
+        config.encoding = 'FLAC';
+      } else {
+        // Default to MP3 for unknown types
+        config.encoding = 'MP3';
+      }
+      
+      // Download the file to a buffer
+      const [fileContents] = await file.download();
+      
+      const audio = {
+        content: fileContents.toString('base64'),
+      };
+      
+      const request = {
+        config: config,
+        audio: audio,
+      };
+      
+      // Perform the transcription
+      console.log('Starting transcription for:', recordingId, 'with encoding:', config.encoding);
+      const [operation] = await client.longRunningRecognize(request);
+      const [response] = await operation.promise();
+      
+      // Process the transcription results
+      const transcription = response.results
+        .map(result => result.alternatives[0].transcript)
+        .join('\n');
+      
+      console.log('Transcription completed for:', recordingId);
+      
+      // Save the transcription to Firestore
+      const transcriptionData = {
+        meetingId: recording.meetingId,
+        transcription: transcription,
+        language: 'en-US',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        isFinal: true
+      };
+      
+      await db.collection('transcriptions').add(transcriptionData);
+      
+      // Update the recording status
+      await snap.ref.update({
+        status: 'transcribed',
+        transcribedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      console.log('Transcription saved successfully for:', recordingId);
+      return null;
+    } catch (error) {
+      console.error('Error transcribing audio:', error);
+      
+      // Update the recording status to indicate failure
+      await snap.ref.update({
+        status: 'failed',
+        error: error.message,
+        failedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      return null;
+    }
+  });

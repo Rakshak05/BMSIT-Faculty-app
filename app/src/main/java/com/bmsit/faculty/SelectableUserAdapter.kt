@@ -68,14 +68,20 @@ class SelectableUserAdapter(private var allUsers: List<User>) : RecyclerView.Ada
     enum class SortBy { DESIGNATION, DEPARTMENT }
 
     private fun designationRank(designation: String?): Int {
+        // Ranking system for sorting users
+        // Higher numbers mean higher authority
+        // New ranking system as per requirements:
+        // 1. HOD
+        // 2. HOD's Assistant
+        // 3. Associate Professor
+        // 4. Assistant Professor
+        // 5. Lab Assistant
         return when (designation?.uppercase()) {
-            "ADMIN" -> 7
-            "DEAN" -> 6
             "HOD" -> 5
+            "HOD'S ASSISTANT" -> 4
             "ASSOCIATE PROFESSOR" -> 3
             "ASSISTANT PROFESSOR" -> 2
             "LAB ASSISTANT" -> 1
-            "OTHERS" -> 1
             else -> 0
         }
     }
@@ -141,5 +147,11 @@ class SelectableUserAdapter(private var allUsers: List<User>) : RecyclerView.Ada
 
     fun getSelectedUsers(): List<User> {
         return selectedUsers.toList()
+    }
+    
+    // Method to pre-select a user
+    fun selectUser(user: User) {
+        selectedUsers.add(user)
+        notifyDataSetChanged()
     }
 }

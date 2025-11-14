@@ -1,5 +1,6 @@
 package com.bmsit.faculty
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
@@ -71,6 +72,12 @@ class SectionedMeetingAdapter(
         private val locationTextView: TextView = itemView.findViewById(R.id.textViewMeetingLocation)
         private val attendeesTextView: TextView = itemView.findViewById(R.id.textViewMeetingAttendees)
         private val hostTextView: TextView = itemView.findViewById(R.id.textViewMeetingHost)
+        private val timeTextView: TextView? = try {
+            itemView.findViewById(R.id.textViewMeetingTime)
+        } catch (e: Exception) {
+            Log.e("SectionedMeetingAdapter", "Error finding textViewMeetingTime", e)
+            null
+        }
         private val expandedSection: LinearLayout = itemView.findViewById(R.id.expandedSection)
         private val reminderButton: Button = itemView.findViewById(R.id.buttonSetReminder)
         private val schedulerActionsLayout: LinearLayout = itemView.findViewById(R.id.layoutSchedulerActions)
@@ -83,6 +90,8 @@ class SectionedMeetingAdapter(
                 if (pos != RecyclerView.NO_POSITION) {
                     val itm = items[pos]
                     if (itm is MeetingListItem.Item) {
+                        // Check if this adapter is being used in MeetingsForDateActivity
+                        // We can check the context or use a different approach
                         itm.meeting.isExpanded = !itm.meeting.isExpanded
                         // Animate expand/collapse
                         (itemView.parent as? ViewGroup)?.let { parent ->
@@ -121,6 +130,32 @@ class SectionedMeetingAdapter(
             attendeesTextView.text = "For: ${meeting.attendees}"
             val sdf = SimpleDateFormat("EEE, MMM d, yyyy 'at' h:mm a", Locale.getDefault())
             dateTimeTextView.text = sdf.format(meeting.dateTime.toDate())
+            
+            // Format and display meeting duration or hide for future meetings
+            timeTextView?.let { timeView ->
+                try {
+                    if (meeting.endTime != null) {
+                        // For past meetings, show duration in HH:MM format
+                        val startTime = meeting.dateTime.toDate()
+                        val endTime = meeting.endTime.toDate()
+                        val durationMillis = endTime.time - startTime.time
+                        val durationHours = durationMillis / (1000 * 60 * 60)
+                        val durationMinutes = (durationMillis / (1000 * 60)) % 60
+                        
+                        // Format duration as HH:MM
+                        val durationFormatted = String.format("%02d:%02d", durationHours, durationMinutes)
+                        timeView.text = "Duration: $durationFormatted"
+                        timeView.visibility = View.VISIBLE
+                    } else {
+                        // For future meetings, hide the time view
+                        timeView.visibility = View.GONE
+                    }
+                } catch (e: Exception) {
+                    Log.e("SectionedMeetingAdapter", "Error formatting meeting duration", e)
+                    timeView.visibility = View.GONE
+                }
+            }
+            
             expandedSection.visibility = if (meeting.isExpanded) View.VISIBLE else View.GONE
             val isScheduler = currentUserId == meeting.scheduledBy
             schedulerActionsLayout.visibility = if (isScheduler) View.VISIBLE else View.GONE

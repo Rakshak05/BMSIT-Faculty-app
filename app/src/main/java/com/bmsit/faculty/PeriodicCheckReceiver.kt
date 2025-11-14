@@ -13,23 +13,36 @@ import java.util.Calendar
 import android.app.NotificationManager
 import android.app.NotificationChannel
 import android.os.Build
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import java.util.concurrent.Executors
 
 class PeriodicCheckReceiver : BroadcastReceiver() {
+    // Use a single thread executor to prevent multiple instances from running simultaneously
+    private val executor = Executors.newSingleThreadExecutor()
+    
     override fun onReceive(context: Context, intent: Intent) {
         Log.d("PeriodicCheck", "Checking for new meetings")
         
-        val auth = FirebaseAuth.getInstance()
-        val db = FirebaseFirestore.getInstance()
-        val currentUser = auth.currentUser
-        
-        if (currentUser != null) {
-            checkForNewMeetings(context, db, currentUser.uid)
+        // Run the check on a background thread to avoid blocking the main thread
+        executor.execute {
+            try {
+                val auth = FirebaseAuth.getInstance()
+                val db = FirebaseFirestore.getInstance()
+                val currentUser = auth.currentUser
+                
+                if (currentUser != null) {
+                    checkForNewMeetings(context, db, currentUser.uid)
+                }
+            } catch (e: Exception) {
+                Log.e("PeriodicCheck", "Error in onReceive", e)
+            }
         }
     }
     
     private fun checkForNewMeetings(context: Context, db: FirebaseFirestore, userId: String) {
         try {
-            // First, check if the user is a Developer
+            // Get user designation first
             db.collection("users").document(userId).get()
                 .addOnSuccessListener { userDocument ->
                     val userDesignation = userDocument.getString("designation")
@@ -39,57 +52,49 @@ class PeriodicCheckReceiver : BroadcastReceiver() {
                         return@addOnSuccessListener
                     }
                     
-                    // Get the time of the last check (you might want to store this in SharedPreferences)
-                    val calendar = Calendar.getInstance()
-                    calendar.add(Calendar.MINUTE, -15) // Check for meetings in the last 15 minutes
-                    val lastCheckTime = Timestamp(calendar.time)
-                    
-                    db.collection("meetings")
-                        .whereGreaterThanOrEqualTo("dateTime", lastCheckTime)
-                        .whereEqualTo("status", "Active")
-                        .get()
-                        .addOnSuccessListener { result ->
-                            for (document in result) {
-                                val meeting = document.toObject(Meeting::class.java)
-                                // Check if this is a new meeting that the user should be notified about
-                                if (shouldNotifyUser(meeting, userId)) {
-                                    showNotification(context, meeting)
-                                }
-                            }
-                        }
-                        .addOnFailureListener { exception ->
-                            Log.e("PeriodicCheck", "Error checking for meetings", exception)
-                        }
+                    // Proceed with checking for meetings
+                    checkForMeetings(context, db, userId)
                 }
                 .addOnFailureListener { exception ->
                     Log.e("PeriodicCheck", "Error checking user designation", exception)
                     // If we can't get the user's designation, proceed with notification
                     // to avoid missing notifications
-                    
-                    // Get the time of the last check (you might want to store this in SharedPreferences)
-                    val calendar = Calendar.getInstance()
-                    calendar.add(Calendar.MINUTE, -15) // Check for meetings in the last 15 minutes
-                    val lastCheckTime = Timestamp(calendar.time)
-                    
-                    db.collection("meetings")
-                        .whereGreaterThanOrEqualTo("dateTime", lastCheckTime)
-                        .whereEqualTo("status", "Active")
-                        .get()
-                        .addOnSuccessListener { result ->
-                            for (document in result) {
-                                val meeting = document.toObject(Meeting::class.java)
-                                // Check if this is a new meeting that the user should be notified about
-                                if (shouldNotifyUser(meeting, userId)) {
-                                    showNotification(context, meeting)
-                                }
-                            }
-                        }
-                        .addOnFailureListener { exception ->
-                            Log.e("PeriodicCheck", "Error checking for meetings", exception)
-                        }
+                    checkForMeetings(context, db, userId)
                 }
         } catch (e: Exception) {
             Log.e("PeriodicCheck", "Error in checkForNewMeetings", e)
+        }
+    }
+    
+    private fun checkForMeetings(context: Context, db: FirebaseFirestore, userId: String) {
+        try {
+            // Get the time of the last check (you might want to store this in SharedPreferences)
+            val calendar = Calendar.getInstance()
+            calendar.add(Calendar.MINUTE, -15) // Check for meetings in the last 15 minutes
+            val lastCheckTime = Timestamp(calendar.time)
+            
+            db.collection("meetings")
+                .whereGreaterThanOrEqualTo("dateTime", lastCheckTime)
+                .whereEqualTo("status", "Active")
+                .get()
+                .addOnSuccessListener { result ->
+                    for (document in result) {
+                        try {
+                            val meeting = document.toObject(Meeting::class.java)
+                            // Check if this is a new meeting that the user should be notified about
+                            if (shouldNotifyUser(meeting, userId)) {
+                                showNotification(context, meeting)
+                            }
+                        } catch (e: Exception) {
+                            Log.e("PeriodicCheck", "Error processing meeting", e)
+                        }
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    Log.e("PeriodicCheck", "Error checking for meetings", exception)
+                }
+        } catch (e: Exception) {
+            Log.e("PeriodicCheck", "Error in checkForMeetings", e)
         }
     }
     
@@ -125,8 +130,16 @@ class PeriodicCheckReceiver : BroadcastReceiver() {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
             
-            with(NotificationManagerCompat.from(context)) {
-                notify(meeting.id.hashCode(), builder.build())
+            // Check for notification permission before showing notification
+            val notificationManager = NotificationManagerCompat.from(context)
+            if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                try {
+                    notificationManager.notify(meeting.id.hashCode(), builder.build())
+                } catch (e: Exception) {
+                    Log.e("PeriodicCheck", "Error showing notification", e)
+                }
+            } else {
+                Log.w("PeriodicCheck", "Notification permission not granted")
             }
         } catch (e: Exception) {
             Log.e("PeriodicCheck", "Error showing notification", e)
@@ -172,5 +185,10 @@ class PeriodicCheckReceiver : BroadcastReceiver() {
     private fun isSameDay(c1: Calendar, c2: Calendar): Boolean {
         return c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR) &&
                 c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR)
+    }
+    
+    // Clean up resources when receiver is destroyed
+    fun cleanup() {
+        executor.shutdown()
     }
 }

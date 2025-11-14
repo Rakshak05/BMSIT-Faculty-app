@@ -9,11 +9,11 @@
             android:id="@+id/nav_calendar"
             android:icon="@drawable/ic_calendar"
             android:title="Calendar" />
-        <!-- Admin (conditionally visible) -->
+        <!-- Faculty Members (formerly Admin Panel) -->
         <item
             android:id="@+id/nav_admin"
             android:icon="@drawable/ic_admin"
-            android:title="Admin Panel" />
+            android:title="Faculty Members" />
 
         <!-- Diagnostic tool for troubleshooting -->
         <item
@@ -21,7 +21,29 @@
             android:icon="@drawable/ic_dashboard"
             android:title="Diagnostics" />
 
-        <!-- Profile should always be at the bottom -->
+        <!-- Download All Users Data as CSV -->
+        <item
+            android:id="@+id/nav_download_csv"
+            android:icon="@drawable/ic_dashboard"
+            android:title="Faculty data" />
+    </group>
+    
+    <!-- Spacer items to push profile to bottom -->
+    <group>
+        <item android:id="@+id/spacer1" android:title="" />
+        <item android:id="@+id/spacer2" android:title="" />
+        <item android:id="@+id/spacer3" android:title="" />
+        <item android:id="@+id/spacer4" android:title="" />
+        <item android:id="@+id/spacer5" android:title="" />
+        <item android:id="@+id/spacer6" android:title="" />
+        <item android:id="@+id/spacer7" android:title="" />
+        <item android:id="@+id/spacer8" android:title="" />
+        <item android:id="@+id/spacer9" android:title="" />
+        <item android:id="@+id/spacer10" android:title="" />
+    </group>
+    
+    <!-- Profile item at the end -->
+    <group android:checkableBehavior="single">
         <item
             android:id="@+id/nav_profile"
             android:icon="@drawable/ic_profile"

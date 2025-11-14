@@ -1,5 +1,6 @@
 package com.bmsit.faculty
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -31,6 +32,12 @@ class MeetingAdapter(
         val dateTimeTextView: TextView = itemView.findViewById(R.id.textViewMeetingDateTime)
         val locationTextView: TextView = itemView.findViewById(R.id.textViewMeetingLocation)
         val attendeesTextView: TextView = itemView.findViewById(R.id.textViewMeetingAttendees)
+        val timeTextView: TextView? = try {
+            itemView.findViewById(R.id.textViewMeetingTime)
+        } catch (e: Exception) {
+            Log.e("MeetingAdapter", "Error finding textViewMeetingTime", e)
+            null
+        }
         val expandedSection: LinearLayout = itemView.findViewById(R.id.expandedSection)
         val reminderButton: Button = itemView.findViewById(R.id.buttonSetReminder)
         val schedulerActionsLayout: LinearLayout = itemView.findViewById(R.id.layoutSchedulerActions)
@@ -85,6 +92,31 @@ class MeetingAdapter(
         // Format and set the date/time
         val sdf = SimpleDateFormat("EEE, MMM d, yyyy 'at' h:mm a", Locale.getDefault())
         holder.dateTimeTextView.text = sdf.format(currentMeeting.dateTime.toDate())
+        
+        // Format and display meeting duration or hide for future meetings
+        holder.timeTextView?.let { timeView ->
+            try {
+                if (currentMeeting.endTime != null) {
+                    // For past meetings, show duration in HH:MM format
+                    val startTime = currentMeeting.dateTime.toDate()
+                    val endTime = currentMeeting.endTime.toDate()
+                    val durationMillis = endTime.time - startTime.time
+                    val durationHours = durationMillis / (1000 * 60 * 60)
+                    val durationMinutes = (durationMillis / (1000 * 60)) % 60
+                    
+                    // Format duration as HH:MM
+                    val durationFormatted = String.format("%02d:%02d", durationHours, durationMinutes)
+                    timeView.text = "Duration: $durationFormatted"
+                    timeView.visibility = View.VISIBLE
+                } else {
+                    // For future meetings, hide the time view
+                    timeView.visibility = View.GONE
+                }
+            } catch (e: Exception) {
+                Log.e("MeetingAdapter", "Error formatting meeting duration", e)
+                timeView.visibility = View.GONE
+            }
+        }
 
         // Show or hide the entire expanded section based on the user's click
         holder.expandedSection.visibility = if (currentMeeting.isExpanded) View.VISIBLE else View.GONE
@@ -96,4 +128,3 @@ class MeetingAdapter(
 
     override fun getItemCount() = meetingList.size
 }
-
