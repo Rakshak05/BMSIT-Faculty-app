@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
@@ -12,7 +11,6 @@
         android:layout_height="wrap_content"
         android:padding="24dp">
 
-        <!-- Logo/Header Section -->
         <ImageView
             android:id="@+id/logoImage"
             android:layout_width="80dp"
@@ -23,12 +21,22 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_arrow_back"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="?attr/colorOnSurface" />
+
         <TextView
-            android:id="@+id/tvWelcome"
+            android:id="@+id/tvTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Welcome Back!"
+            android:text="Create Your Account"
             android:textSize="24sp"
             android:textStyle="bold"
             android:textColor="?attr/colorOnSurface"
@@ -42,20 +50,35 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:gravity="center"
-            android:text="Sign in to access your faculty dashboard."
+            android:text="Create your account to join the faculty portal."
             android:textColor="?attr/colorOnSurfaceVariant"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvWelcome" />
+            app:layout_constraintTop_toBottomOf="@id/tvTitle" />
 
         <!-- Input Fields -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:hint="Full Name"
+            app:layout_constraintTop_toBottomOf="@id/tvSubtitle">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPersonName" />
+        </com.google.android.material.textfield.TextInputLayout>
+
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilEmail"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="16dp"
             android:hint="Email address"
-            app:layout_constraintTop_toBottomOf="@id/tvSubtitle">
+            app:layout_constraintTop_toBottomOf="@id/tilName">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etEmail"
@@ -80,64 +103,43 @@
                 android:inputType="textPassword" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Remember Me and Forgot Password -->
-        <CheckBox
-            android:id="@+id/cbRememberMe"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Remember me"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tilPassword" />
-
-        <TextView
-            android:id="@+id/tvForgotPassword"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Forgot Password?"
-            android:textStyle="bold"
-            android:textColor="?attr/colorPrimary"
-            app:layout_constraintBottom_toBottomOf="@id/cbRememberMe"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@id/cbRememberMe" />
-
-        <!-- Sign In Button -->
+        <!-- Register Button -->
         <Button
-            android:id="@+id/btnLogin"
+            android:id="@+id/btnRegister"
             android:layout_width="match_parent"
             android:layout_height="60dp"
-            android:layout_marginTop="24dp"
-            android:text="Sign in"
-            app:layout_constraintTop_toBottomOf="@id/cbRememberMe" />
+            android:layout_marginTop="32dp"
+            android:text="Register"
+            app:layout_constraintTop_toBottomOf="@id/tilPassword" />
 
-        <!-- Don't have an account section (NEW REQUEST) -->
+        <!-- Already have account section (NEW REQUEST) -->
         <LinearLayout
-            android:id="@+id/layoutSignUpPrompt"
+            android:id="@+id/layoutSignInPrompt"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:gravity="end"
             android:orientation="vertical"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/btnLogin">
+            app:layout_constraintTop_toBottomOf="@id/btnRegister">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Don't have an acc yet!?"
+                android:text="Already have an acc!?"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
             <TextView
-                android:id="@+id/tvGoToSignUp"
+                android:id="@+id/tvGoToSignIn"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Sign up"
+                android:text="Sign-in"
                 android:textStyle="bold"
                 android:textColor="?attr/colorPrimary"
                 android:paddingTop="4dp"/>
         </LinearLayout>
 
-        <!-- Social Login Divider -->
+        <!-- Social Divider -->
         <LinearLayout
             android:id="@+id/layoutDivider"
             android:layout_width="match_parent"
@@ -145,7 +147,7 @@
             android:layout_marginTop="32dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            app:layout_constraintTop_toBottomOf="@id/layoutSignUpPrompt">
+            app:layout_constraintTop_toBottomOf="@id/layoutSignInPrompt">
 
             <View
                 android:layout_width="0dp"
@@ -169,11 +171,11 @@
 
         <!-- Google Button -->
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnGoogleSignIn"
+            android:id="@+id/btnGoogleSignUp"
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:layout_marginTop="24dp"
-            android:text="Sign in with Google"
+            android:text="Sign up with Google"
             android:textColor="@color/black"
             android:backgroundTint="@android:color/white"
             app:icon="@drawable/ic_google_logo"

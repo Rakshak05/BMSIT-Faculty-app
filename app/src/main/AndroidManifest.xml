@@ -74,6 +74,8 @@
         <activity android:name="com.bmsit.faculty.EmailDebugActivity" android:label="Email Debug" android:exported="false" />
         <activity android:name="com.bmsit.faculty.CertificateDebugActivity" android:label="Certificate Debug" android:exported="false" />
         <activity android:name="com.bmsit.faculty.ProfileActivity" android:label="My Profile" android:exported="false" />
+        <activity android:name="com.bmsit.faculty.RegisterActivity" android:label="Register" android:exported="false" />
+        <activity android:name="com.bmsit.faculty.ForgotPasswordActivity" android:label="Forgot Password" android:exported="false" />
 
         <!-- File Provider for CSV Export -->
         <provider

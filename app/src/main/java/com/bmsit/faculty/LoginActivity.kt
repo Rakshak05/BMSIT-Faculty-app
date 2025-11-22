@@ -12,18 +12,24 @@ import android.text.TextWatcher
 import android.util.Log
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.bmsit.faculty.RegisterActivity
+import com.bmsit.faculty.MainActivity
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -36,16 +42,21 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
     private lateinit var googleSignInClient: GoogleSignInClient
-    private lateinit var progressBar: ProgressBar
-    private lateinit var googleSignInContainer: LinearLayout
-    private lateinit var debugInfoButton: Button
-    private lateinit var emailInputLayout: TextInputLayout
-    private lateinit var passwordInputLayout: TextInputLayout
-    private lateinit var editTextEmail: EditText
-    private lateinit var editTextPassword: EditText
-    private lateinit var buttonLogin: Button
-    private lateinit var textViewForgotPassword: TextView
-    private lateinit var textViewSignUp: TextView
+    // progressBar is not in the current layout, so we'll use a nullable reference
+    private var progressBar: ProgressBar? = null
+    // googleSignInContainer is not in the current layout, so we'll use a nullable reference
+    private var googleSignInContainer: LinearLayout? = null
+    // debugInfoButton is not in the current layout, so we'll use a nullable reference
+    private var debugInfoButton: Button? = null
+    private lateinit var tilEmail: TextInputLayout
+    private lateinit var tilPassword: TextInputLayout
+    private lateinit var etEmail: TextInputEditText
+    private lateinit var etPassword: TextInputEditText
+    private lateinit var cbRememberMe: CheckBox
+    private lateinit var tvForgotPassword: TextView
+    private lateinit var btnLogin: Button
+    private lateinit var tvGoToSignUp: TextView
+    private lateinit var btnGoogleSignIn: MaterialButton
 
     // ADDED: Retry counter for Google Sign-In
     private var signInRetryCount = 0
@@ -82,7 +93,7 @@ class LoginActivity : AppCompatActivity() {
                         signInRetryCount = 0
                     }
                     
-                    progressBar.visibility = View.GONE
+                    progressBar?.visibility = View.GONE
                     // Provide more specific error messages based on result code
                     when (result.resultCode) {
                         RESULT_CANCELED -> {
@@ -116,13 +127,13 @@ class LoginActivity : AppCompatActivity() {
         } catch (e: ApiException) {
             Log.e("LoginActivity", "Google Sign-In failed with code: ${e.statusCode}", e)
             mainHandler.post {
-                progressBar.visibility = View.GONE
+                progressBar?.visibility = View.GONE
                 handleGoogleSignInError(e)
             }
         } catch (e: SecurityException) {
             Log.e("LoginActivity", "SecurityException during Google Sign-In result handling. This might be due to Google Play Services issues.", e)
             mainHandler.post {
-                progressBar.visibility = View.GONE
+                progressBar?.visibility = View.GONE
                 Toast.makeText(this, "Security error during Google Sign-In. Please ensure Google Play Services is updated and try again.", Toast.LENGTH_LONG).show()
                 
                 // Try fallback method
@@ -131,7 +142,7 @@ class LoginActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("LoginActivity", "Unexpected error in Google Sign-In result handling", e)
             mainHandler.post {
-                progressBar.visibility = View.GONE
+                progressBar?.visibility = View.GONE
                 Toast.makeText(this, "Unexpected error during Google Sign-In: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
@@ -217,7 +228,7 @@ class LoginActivity : AppCompatActivity() {
             
             super.onCreate(savedInstanceState)
             Log.d("LoginActivity", "onCreate started")
-            setContentView(R.layout.activity_login_updated)
+            setContentView(R.layout.activity_login)
             Log.d("LoginActivity", "Layout inflated successfully")
 
             auth = FirebaseAuth.getInstance()
@@ -227,17 +238,8 @@ class LoginActivity : AppCompatActivity() {
             // Log Firebase configuration for debugging
             Log.d("LoginActivity", "Firebase app ID: ${getString(R.string.google_app_id)}")
             
-            progressBar = findViewById(R.id.progressBar)
-            googleSignInContainer = findViewById(R.id.googleSignInContainer)
-            debugInfoButton = findViewById(R.id.debugInfoButton)
-            emailInputLayout = findViewById(R.id.emailInputLayout)
-            passwordInputLayout = findViewById(R.id.passwordInputLayout)
-            editTextEmail = findViewById(R.id.editTextEmail)
-            editTextPassword = findViewById(R.id.editTextPassword)
-            buttonLogin = findViewById(R.id.buttonLogin)
-            textViewForgotPassword = findViewById(R.id.textViewForgotPassword)
-            textViewSignUp = findViewById(R.id.textViewSignUp)
-            Log.d("LoginActivity", "Views found successfully")
+            // Initialize views
+            initViews()
             
             // Perform comprehensive Google Play Services diagnostics
             performGooglePlayServicesDiagnostics()
@@ -270,42 +272,21 @@ class LoginActivity : AppCompatActivity() {
             Log.d("LoginActivity", "  - Request ID Token: ${getString(R.string.default_web_client_id)}")
             Log.d("LoginActivity", "  - Request Email: true")
             
-            // Set up Google Sign-In button
-            googleSignInContainer.setOnClickListener {
-                try {
-                    Log.d("LoginActivity", "Custom Google Sign in button clicked")
-                    handleGoogleSignIn()
-                } catch (e: Exception) {
-                    Log.e("LoginActivity", "Error in custom Google Sign-In button click listener", e)
-                    Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-            }
-            
-            // Set up email/password login
-            buttonLogin.setOnClickListener {
-                handleEmailPasswordLogin()
-            }
-            
-            // Set up forgot password
-            textViewForgotPassword.setOnClickListener {
-                handleForgotPassword()
-            }
-            
-            // Set up sign up (contact admin)
-            textViewSignUp.setOnClickListener {
-                Toast.makeText(this, R.string.contact_admin_message, Toast.LENGTH_LONG).show()
-            }
+            // Set up click listeners
+            setupClickListeners()
             
             // Add text watchers for input validation
             setupInputValidation()
             
             // Set up debug info button for troubleshooting
-            debugInfoButton.setOnClickListener {
-                showDebugInfo()
-            }
+            // debugInfoButton is not in the current layout
+            // debugInfoButton.setOnClickListener {
+            //     showDebugInfo()
+            // }
             
             // For debugging purposes, show the debug button temporarily
             // Uncomment the next line to show the debug button for testing
+            // debugInfoButton is not in the current layout
             // debugInfoButton.visibility = View.VISIBLE
             Log.d("LoginActivity", "onCreate completed successfully")
         } catch (e: Exception) {
@@ -314,22 +295,77 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
+    private fun initViews() {
+        // Initialize views that exist in the current layout
+        tilEmail = findViewById<TextInputLayout>(R.id.tilEmail)
+        tilPassword = findViewById<TextInputLayout>(R.id.tilPassword)
+        etEmail = findViewById<TextInputEditText>(R.id.etEmail)
+        etPassword = findViewById<TextInputEditText>(R.id.etPassword)
+        cbRememberMe = findViewById<CheckBox>(R.id.cbRememberMe)
+        tvForgotPassword = findViewById<TextView>(R.id.tvForgotPassword)
+        btnLogin = findViewById<Button>(R.id.btnLogin)
+        tvGoToSignUp = findViewById<TextView>(R.id.tvGoToSignUp)
+        btnGoogleSignIn = findViewById<MaterialButton>(R.id.btnGoogleSignIn)
+        
+        // These views don't exist in the current layout, so we won't initialize them
+        // progressBar = findViewById(R.id.progressBar)
+        // debugInfoButton = findViewById<Button>(R.id.debugInfoButton)
+        // googleSignInContainer = findViewById<LinearLayout>(R.id.googleSignInContainer)
+    }
+
+    private fun setupClickListeners() {
+        // Set up Google Sign-In button
+        btnGoogleSignIn.setOnClickListener {
+            try {
+                Log.d("LoginActivity", "Google Sign in button clicked")
+                handleGoogleSignIn()
+            } catch (e: Exception) {
+                Log.e("LoginActivity", "Error in Google Sign-In button click listener", e)
+                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+        
+        // Set up email/password login
+        btnLogin.setOnClickListener {
+            handleEmailPasswordLogin()
+        }
+        
+        // Set up forgot password
+        tvForgotPassword.setOnClickListener {
+            // Navigate to forgot password activity
+            val intent = Intent(this, ForgotPasswordActivity::class.java)
+            startActivity(intent)
+        }
+        
+        // Set up sign up navigation
+        tvGoToSignUp.setOnClickListener {
+            val intent = Intent(this, RegisterActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
+        
+        // The debugInfoButton doesn't exist in the current layout, so we won't set up a listener for it
+        // debugInfoButton.setOnClickListener {
+        //     showDebugInfo()
+        // }
+    }
+
     private fun setupInputValidation() {
-        editTextEmail.addTextChangedListener(object : TextWatcher {
+        etEmail.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                emailInputLayout.error = null
+                tilEmail.error = null
             }
             
             override fun afterTextChanged(s: Editable?) {}
         })
         
-        editTextPassword.addTextChangedListener(object : TextWatcher {
+        etPassword.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                passwordInputLayout.error = null
+                tilPassword.error = null
             }
             
             override fun afterTextChanged(s: Editable?) {}
@@ -337,32 +373,32 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun handleEmailPasswordLogin() {
-        val email = editTextEmail.text.toString().trim()
-        val password = editTextPassword.text.toString().trim()
+        val email = etEmail.text.toString().trim()
+        val password = etPassword.text.toString().trim()
         
         // Validate input
         var isValid = true
         
         if (email.isEmpty()) {
-            emailInputLayout.error = "Email is required"
+            tilEmail.error = "Email is required"
             isValid = false
         } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            emailInputLayout.error = "Please enter a valid email"
+            tilEmail.error = "Please enter a valid email"
             isValid = false
         }
         
         if (password.isEmpty()) {
-            passwordInputLayout.error = "Password is required"
+            tilPassword.error = "Password is required"
             isValid = false
         } else if (password.length < 6) {
-            passwordInputLayout.error = "Password must be at least 6 characters"
+            tilPassword.error = "Password must be at least 6 characters"
             isValid = false
         }
         
         if (!isValid) return
         
         // Show progress
-        progressBar.visibility = View.VISIBLE
+        progressBar?.visibility = View.VISIBLE
         
         // Attempt to sign in
         auth.signInWithEmailAndPassword(email, password)
@@ -373,12 +409,12 @@ class LoginActivity : AppCompatActivity() {
                     if (user != null) {
                         checkAndCreateUserProfile(user.uid, user.displayName, user.email)
                     } else {
-                        progressBar.visibility = View.GONE
+                        progressBar?.visibility = View.GONE
                         Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     Log.e("LoginActivity", "Email/Password sign in failed", task.exception)
-                    progressBar.visibility = View.GONE
+                    progressBar?.visibility = View.GONE
                     
                     // Check if this is a user not found error
                     if (task.exception?.message?.contains("no user record") == true) {
@@ -430,23 +466,23 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun handleForgotPassword() {
-        val email = editTextEmail.text.toString().trim()
+        val email = etEmail.text.toString().trim()
         
         if (email.isEmpty()) {
-            emailInputLayout.error = getString(R.string.email_required_for_reset)
+            tilEmail.error = getString(R.string.email_required_for_reset)
             return
         }
         
         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            emailInputLayout.error = getString(R.string.valid_email_required)
+            tilEmail.error = getString(R.string.valid_email_required)
             return
         }
         
-        progressBar.visibility = View.VISIBLE
+        progressBar?.visibility = View.VISIBLE
         
         auth.sendPasswordResetEmail(email)
             .addOnCompleteListener { task ->
-                progressBar.visibility = View.GONE
+                progressBar?.visibility = View.GONE
                 if (task.isSuccessful) {
                     Log.d("LoginActivity", "Password reset email sent successfully to $email")
                     Toast.makeText(this, 
@@ -470,7 +506,7 @@ class LoginActivity : AppCompatActivity() {
                 }
             }
             .addOnFailureListener { exception ->
-                progressBar.visibility = View.GONE
+                progressBar?.visibility = View.GONE
                 Log.e("LoginActivity", "Failed to send password reset email to $email", exception)
                 Toast.makeText(this, 
                     "Failed to send password reset email. Please contact support. Error: ${exception.message}", 
@@ -537,10 +573,10 @@ class LoginActivity : AppCompatActivity() {
             // For now, we'll just show a message
             Toast.makeText(this, "Fallback method not yet implemented. Please ensure Google Play Services is updated.", Toast.LENGTH_LONG).show()
             
-            progressBar.visibility = View.GONE
+            progressBar?.visibility = View.GONE
         } catch (e: Exception) {
             Log.e("LoginActivity", "Error in fallback Firebase Google Sign-In", e)
-            progressBar.visibility = View.GONE
+            progressBar?.visibility = View.GONE
             Toast.makeText(this, "Fallback authentication method failed: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
@@ -555,7 +591,7 @@ class LoginActivity : AppCompatActivity() {
             if (email != null && !isValidEmailDomain(email)) {
                 Log.w("LoginActivity", "Google Sign-In attempt with invalid email domain: $email")
                 mainHandler.post {
-                    progressBar.visibility = View.GONE
+                    progressBar?.visibility = View.GONE
                     Toast.makeText(this, "Only users with bmsit.in or meetinghubapp@gmail.com email addresses are allowed to access this app", Toast.LENGTH_LONG).show()
                 }
                 return
@@ -566,7 +602,7 @@ class LoginActivity : AppCompatActivity() {
             if (idToken == null) {
                 Log.e("LoginActivity", "No ID token received from Google Sign-In")
                 mainHandler.post {
-                    progressBar.visibility = View.GONE
+                    progressBar?.visibility = View.GONE
                     Toast.makeText(this, "Google Sign-In failed: No authentication token received", Toast.LENGTH_LONG).show()
                 }
                 return
@@ -585,7 +621,7 @@ class LoginActivity : AppCompatActivity() {
                             checkAndCreateUserProfile(user.uid, user.displayName, user.email)
                         } else {
                             Log.e("LoginActivity", "User is null after successful authentication")
-                            progressBar.visibility = View.GONE
+                            progressBar?.visibility = View.GONE
                             Toast.makeText(this, "Authentication succeeded but user data is unavailable", Toast.LENGTH_SHORT).show()
                         }
                     } else {
@@ -595,12 +631,12 @@ class LoginActivity : AppCompatActivity() {
                         if (task.exception?.message?.contains("unknown calling package") == true) {
                             Log.w("LoginActivity", "Detected Google Play Services broker issue, attempting fallback")
                             mainHandler.post {
-                                progressBar.visibility = View.GONE
+                                progressBar?.visibility = View.GONE
                                 Toast.makeText(this, "Google Play Services issue detected. Trying alternative approach...", Toast.LENGTH_LONG).show()
                                 fallbackFirebaseGoogleSignIn()
                             }
                         } else {
-                            progressBar.visibility = View.GONE
+                            progressBar?.visibility = View.GONE
                             // More user-friendly error message
                             val errorMessage = task.exception?.message ?: "Unknown error occurred during authentication"
                             Log.e("LoginActivity", "Firebase Authentication failed: $errorMessage")
@@ -612,21 +648,21 @@ class LoginActivity : AppCompatActivity() {
                 .addOnFailureListener { exception ->
                     Log.e("LoginActivity", "Firebase Authentication failed completely", exception)
                     mainHandler.post {
-                        progressBar.visibility = View.GONE
+                        progressBar?.visibility = View.GONE
                         Toast.makeText(this, "Authentication process failed: ${exception.message}", Toast.LENGTH_LONG).show()
                     }
                 }
         } catch (e: SecurityException) {
             Log.e("LoginActivity", "SecurityException in firebaseAuthWithGoogle. This might be due to Google Play Services broker issues.", e)
             mainHandler.post {
-                progressBar.visibility = View.GONE
+                progressBar?.visibility = View.GONE
                 Toast.makeText(this, "Security error during authentication. Trying alternative approach...", Toast.LENGTH_LONG).show()
                 fallbackFirebaseGoogleSignIn()
             }
         } catch (e: Exception) {
             Log.e("LoginActivity", "Error in firebaseAuthWithGoogle", e)
             mainHandler.post {
-                progressBar.visibility = View.GONE
+                progressBar?.visibility = View.GONE
                 Toast.makeText(this, "Error in authentication: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
@@ -829,7 +865,7 @@ class LoginActivity : AppCompatActivity() {
     private fun navigateToMain() {
         try {
             Log.d("LoginActivity", "navigateToMain called")
-            progressBar.visibility = View.GONE
+            progressBar?.visibility = View.GONE
             val intent = Intent(this, MainActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
@@ -851,14 +887,14 @@ class LoginActivity : AppCompatActivity() {
             }
             
             // Show progress indicator
-            progressBar.visibility = View.VISIBLE
+            progressBar?.visibility = View.VISIBLE
             
             // Start the Google Sign-In flow
             val signInIntent = googleSignInClient.signInIntent
             googleSignInLauncher.launch(signInIntent)
         } catch (e: Exception) {
             Log.e("LoginActivity", "Error in handleGoogleSignIn", e)
-            progressBar.visibility = View.GONE
+            progressBar?.visibility = View.GONE
             Toast.makeText(this, "Error initiating Google Sign-In: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
