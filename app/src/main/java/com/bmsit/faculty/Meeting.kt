@@ -9,7 +9,7 @@ data class Meeting(
     val title: String = "",
     val location: String = "",
     val dateTime: Timestamp = Timestamp.now(),
-    val attendees: String = "", // e.g., "All Faculty", "All HODs", "Custom"
+    val attendees: String = "", // e.g., "All Associate Prof", "All Assistant Prof", "All Faculty", "Custom"
     val scheduledBy: String = "", // UID of the user who scheduled it
 
     // --- NEW: A list to hold the UIDs of custom attendees ---

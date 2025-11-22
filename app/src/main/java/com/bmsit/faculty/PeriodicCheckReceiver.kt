@@ -45,13 +45,6 @@ class PeriodicCheckReceiver : BroadcastReceiver() {
             // Get user designation first
             db.collection("users").document(userId).get()
                 .addOnSuccessListener { userDocument ->
-                    val userDesignation = userDocument.getString("designation")
-                    
-                    // If user is a Developer, don't notify them about any meetings
-                    if (userDesignation == "Developer") {
-                        return@addOnSuccessListener
-                    }
-                    
                     // Proceed with checking for meetings
                     checkForMeetings(context, db, userId)
                 }
@@ -107,9 +100,9 @@ class PeriodicCheckReceiver : BroadcastReceiver() {
         
         // Check if user should be notified based on attendees
         return when (meeting.attendees) {
+            "All Associate Prof" -> true // Simplified check - in a real implementation, you'd check the user's designation
+            "All Assistant Prof" -> true // Simplified check
             "All Faculty" -> true // Simplified check - in a real implementation, you'd check the user's designation
-            "All HODs" -> true // Simplified check
-            "All Deans" -> true // Simplified check
             "Custom" -> meeting.customAttendeeUids.contains(userId)
             else -> false
         }

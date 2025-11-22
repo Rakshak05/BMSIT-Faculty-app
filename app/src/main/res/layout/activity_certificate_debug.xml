@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    tools:context=".CertificateDebugActivity">
+
+    <TextView
+        android:id="@+id/textViewTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Certificate Debug Tool"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="16dp" />
+
+    <TextView
+        android:id="@+id/textViewDescription"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="This tool displays the certificate fingerprints needed to configure Google Sign-In with Firebase. Copy these values and add them to your Firebase project settings."
+        android:textSize="14sp"
+        android:textAlignment="center"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textViewTitle"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/sha1Label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="SHA-1 Certificate Fingerprint:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textViewDescription"
+        android:layout_marginTop="24dp" />
+
+    <TextView
+        android:id="@+id/sha1TextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Loading..."
+        android:textSize="14sp"
+        android:fontFamily="monospace"
+        android:background="#f0f0f0"
+        android:padding="8dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/sha1Label" />
+
+    <Button
+        android:id="@+id/copySha1Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Copy SHA-1"
+        android:layout_marginTop="8dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/sha1TextView" />
+
+    <TextView
+        android:id="@+id/sha256Label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="SHA-256 Certificate Fingerprint:"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginTop="24dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/copySha1Button" />
+
+    <TextView
+        android:id="@+id/sha256TextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Loading..."
+        android:textSize="14sp"
+        android:fontFamily="monospace"
+        android:background="#f0f0f0"
+        android:padding="8dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/sha256Label" />
+
+    <Button
+        android:id="@+id/copySha256Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Copy SHA-256"
+        android:layout_marginTop="8dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/sha256TextView" />
+
+    <Button
+        android:id="@+id/refreshButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Refresh"
+        android:layout_marginTop="24dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/copySha256Button" />
+
+    <TextView
+        android:id="@+id/instructionsTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Instructions:\n1. Copy the SHA-1 and SHA-256 fingerprints above\n2. Go to Firebase Console > Project Settings > General\n3. Under 'Your apps', find your Android app\n4. Add the fingerprints to the 'SHA certificate fingerprints' section\n5. Save the changes"
+        android:textSize="12sp"
+        android:background="#e0e0e0"
+        android:padding="12dp"
+        android:layout_marginTop="24dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/refreshButton" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

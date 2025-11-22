@@ -7,11 +7,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.RecyclerView
-import com.bmsit.faculty.speech.SpeechService
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
@@ -28,21 +28,28 @@ class CurrentMeetingAdapter(
     private val db = FirebaseFirestore.getInstance()
     private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
     private val dateTimeFormat = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault())
-    private val speechService = SpeechService(context)
     // Track expanded positions
     private val expandedPositions = mutableSetOf<Int>()
 
     class CurrentMeetingViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val titleText: TextView = view.findViewById(R.id.textViewMeetingTitle)
-        val timeText: TextView = view.findViewById(R.id.textViewMeetingTime)
-        val dateTimeText: TextView = view.findViewById(R.id.textViewMeetingDateTime)
-        val locationText: TextView = view.findViewById(R.id.textViewMeetingLocation)
-        val attendeesText: TextView = view.findViewById(R.id.textViewMeetingAttendees)
-        val hostText: TextView = view.findViewById(R.id.textViewMeetingHost)
-        val recordButton: Button = view.findViewById(R.id.buttonRecordMeeting)
-        val endButton: Button = view.findViewById(R.id.buttonEndMeeting)
+        val titleText: TextView = view.findViewById<TextView>(R.id.textViewMeetingTitle)
+        val timeText: TextView = view.findViewById<TextView>(R.id.textViewMeetingTime)
+        val dateTimeText: TextView = view.findViewById<TextView>(R.id.textViewMeetingDateTime)
+        val locationText: TextView = view.findViewById<TextView>(R.id.textViewMeetingLocation)
+        val attendeesText: TextView = view.findViewById<TextView>(R.id.textViewMeetingAttendees)
+        val hostText: TextView = view.findViewById<TextView>(R.id.textViewMeetingHost)
+        val endButton: Button = view.findViewById<Button>(R.id.buttonEndMeeting)
+        val takeAttendanceButton: Button = view.findViewById<Button>(R.id.buttonTakeAttendance)
         // Add references to the expandable views
-        val expandedContent: View = view.findViewById(R.id.expandedContent)
+        val expandedContent: View = view.findViewById<View>(R.id.expandedContent)
+        
+        // Attendance UI elements
+        val attendanceLayout: LinearLayout = view.findViewById<LinearLayout>(R.id.attendanceLayout)
+        val endTimeText: TextView = view.findViewById<TextView>(R.id.textViewEndTime)
+        val setEndTimeButton: Button = view.findViewById<Button>(R.id.buttonSetEndTime)
+        val attendeesRecyclerView: RecyclerView = view.findViewById<RecyclerView>(R.id.recyclerViewAttendees)
+        val saveAttendanceButton: Button = view.findViewById<Button>(R.id.buttonSaveAttendance)
+        val cancelAttendanceButton: Button = view.findViewById<Button>(R.id.buttonCancelAttendance)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CurrentMeetingViewHolder {
@@ -81,103 +88,169 @@ class CurrentMeetingAdapter(
             notifyItemChanged(position)
         }
 
-        // Show record button and end meeting button only for the host
+        // Show end meeting button and take attendance button only for the host
         if (meeting.scheduledBy == currentUserId) {
-            holder.recordButton.visibility = View.VISIBLE
-            if (meeting.isRecording) {
-                holder.recordButton.text = "Stop Recording"
-            } else {
-                holder.recordButton.text = "Record Meeting"
-            }
-            
-            holder.recordButton.setOnClickListener {
-                toggleRecording(meeting, position, holder.recordButton)
-            }
-            
             // Show end meeting button for host
             holder.endButton.visibility = View.VISIBLE
             holder.endButton.setOnClickListener {
-                showEndMeetingConfirmation(meeting, holder.adapterPosition)
+                Log.d(TAG, "End meeting button clicked for meeting: ${meeting.id}")
+                Log.d(TAG, "Meeting scheduled by: ${meeting.scheduledBy}")
+                Log.d(TAG, "Current user ID: $currentUserId")
+                
+                if (meeting.scheduledBy == currentUserId) {
+                    showEndMeetingConfirmation(meeting, holder.adapterPosition)
+                } else {
+                    Toast.makeText(context, "You are not the host of this meeting", Toast.LENGTH_SHORT).show()
+                    Log.w(TAG, "User tried to end meeting they don't host: ${meeting.id}")
+                }
+                // Prevent the click from propagating to the parent item view
+                it.cancelPendingInputEvents()
+            }
+            
+            // Show take attendance button for host
+            holder.takeAttendanceButton.visibility = View.VISIBLE
+            holder.takeAttendanceButton.setOnClickListener {
+                showAttendanceUI(holder, meeting)
+                // Prevent the click from propagating to the parent item view
+                it.cancelPendingInputEvents()
             }
         } else {
-            holder.recordButton.visibility = View.GONE
             holder.endButton.visibility = View.GONE
+            holder.takeAttendanceButton.visibility = View.GONE
         }
     }
 
-    private fun toggleRecording(meeting: CurrentMeeting, position: Int, recordButton: Button) {
-        try {
-            if (meeting.isRecording) {
-                // Stop recording
-                speechService.stopRecording()
-                val updatedMeeting = meeting.copy(isRecording = false)
-                // Update UI
-                recordButton.text = "Record Meeting"
-                // In a real implementation, you would save the final transcription here
-                Toast.makeText(context, "Recording stopped and saved", Toast.LENGTH_SHORT).show()
-                Log.d(TAG, "Stopped recording for meeting: ${meeting.id}")
-            } else {
-                // Start recording
-                speechService.startRecording(meeting.id) { transcription ->
-                    // Update the meeting with the latest transcription
-                    // In a real implementation, you would update the UI with the transcription
-                    Log.d(TAG, "Transcription update: $transcription")
-                }
-                val updatedMeeting = meeting.copy(isRecording = true)
-                // Update UI
-                recordButton.text = "Stop Recording"
-                Toast.makeText(context, "Recording started", Toast.LENGTH_SHORT).show()
-                Log.d(TAG, "Started recording for meeting: ${meeting.id}")
-            }
-            
-            // Update the meeting in the list
-            // Note: In a real implementation, you would need to update the data source
-            // and notify the adapter of the change
-        } catch (e: Exception) {
-            Log.e(TAG, "Error toggling recording", e)
-            Toast.makeText(context, "Error with recording: ${e.message}", Toast.LENGTH_LONG).show()
-            // Show error message to user
+    private fun showAttendanceUI(holder: CurrentMeetingViewHolder, meeting: CurrentMeeting) {
+        // Hide the take attendance button and show the attendance layout
+        holder.takeAttendanceButton.visibility = View.GONE
+        holder.attendanceLayout.visibility = View.VISIBLE
+        
+        // Set up the attendance UI
+        setupAttendanceUI(holder, meeting)
+    }
+
+    private fun setupAttendanceUI(holder: CurrentMeetingViewHolder, meeting: CurrentMeeting) {
+        // Set up end time button
+        holder.setEndTimeButton.setOnClickListener {
+            showEndTimePicker(holder, meeting)
         }
+        
+        // Set up cancel button
+        holder.cancelAttendanceButton.setOnClickListener {
+            // Hide attendance layout and show take attendance button
+            holder.attendanceLayout.visibility = View.GONE
+            holder.takeAttendanceButton.visibility = View.VISIBLE
+        }
+        
+        // Set up save button
+        holder.saveAttendanceButton.setOnClickListener {
+            saveAttendanceFromCard(holder, meeting)
+        }
+        
+        // Load attendees
+        loadAttendeesForMeeting(holder, meeting)
+    }
+
+    private fun showEndTimePicker(holder: CurrentMeetingViewHolder, meeting: CurrentMeeting) {
+        // TODO: Implement end time picker
+        Toast.makeText(context, "End time picker would appear here", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun loadAttendeesForMeeting(holder: CurrentMeetingViewHolder, meeting: CurrentMeeting) {
+        // TODO: Implement attendee loading
+        Toast.makeText(context, "Loading attendees...", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun saveAttendanceFromCard(holder: CurrentMeetingViewHolder, meeting: CurrentMeeting) {
+        // TODO: Implement attendance saving
+        Toast.makeText(context, "Saving attendance...", Toast.LENGTH_SHORT).show()
     }
 
     private fun showEndMeetingConfirmation(meeting: CurrentMeeting, position: Int) {
+        Log.d(TAG, "Showing end meeting confirmation for meeting: ${meeting.id}")
         AlertDialog.Builder(context)
             .setTitle("End Meeting")
-            .setMessage("Are you sure you want to end this meeting? You will be prompted to take attendance.")
-            .setPositiveButton("End Meeting") { _, _ ->
+            .setMessage("Do you want to end this meeting early?")
+            .setPositiveButton("End Early") { _, _ -> 
+                Log.d(TAG, "User confirmed to end meeting: ${meeting.id}")
                 endMeeting(meeting, position)
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton("Cancel") { _, _ ->
+                Log.d(TAG, "User cancelled ending meeting: ${meeting.id}")
+            }
             .show()
     }
 
     private fun endMeeting(meeting: CurrentMeeting, position: Int) {
+        Log.d(TAG, "Ending meeting: ${meeting.id} at position: $position")
+        // Directly end the meeting immediately without extra confirmation
+        endMeetingImmediately(meeting)
+    }
+    
+    private fun endMeetingImmediately(meeting: CurrentMeeting) {
         try {
-            // Stop any ongoing recording
-            if (speechService.isRecording()) {
-                speechService.stopRecording()
+            // Validate that we have a valid meeting ID
+            if (meeting.id.isBlank()) {
+                Log.e(TAG, "Invalid meeting ID: '${meeting.id}'")
+                Toast.makeText(context, "Invalid meeting ID", Toast.LENGTH_LONG).show()
+                return
             }
             
-            // Update meeting with end time in Firestore
-            val endTime = Timestamp.now()
             val meetingRef = db.collection("meetings").document(meeting.id)
             
-            meetingRef.update("endTime", endTime)
-                .addOnSuccessListener {
-                    Toast.makeText(context, "Meeting ended successfully", Toast.LENGTH_SHORT).show()
-                    Log.d(TAG, "Meeting ended: ${meeting.id}")
-                    
-                    // Show attendance dialog
-                    showAttendanceDialog(meeting)
+            Log.d(TAG, "Attempting to end meeting: ${meeting.id}")
+            
+            // First check if the document exists
+            meetingRef.get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        Log.d(TAG, "Meeting document found: ${meeting.id}")
+                        val endTime = Timestamp.now()
+                        Log.d(TAG, "End time: $endTime")
+                        
+                        meetingRef.update("endTime", endTime)
+                            .addOnSuccessListener {
+                                Toast.makeText(context, "Meeting ended successfully", Toast.LENGTH_SHORT).show()
+                                Log.d(TAG, "Meeting ended successfully: ${meeting.id}")
+                                
+                                // Prompt host to take attendance immediately
+                                showAttendancePrompt(meeting)
+                                
+                                // Refresh the data to reflect the changes
+                                // This will update the UI to show that the meeting has ended
+                                // You might want to notify the adapter or refresh the data source
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e(TAG, "Error updating meeting: ${meeting.id}", e)
+                                Toast.makeText(context, "Error updating meeting: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
+                    } else {
+                        Log.e(TAG, "Meeting document not found: ${meeting.id}")
+                        Toast.makeText(context, "Meeting not found in database", Toast.LENGTH_LONG).show()
+                    }
                 }
                 .addOnFailureListener { e ->
-                    Log.e(TAG, "Error ending meeting", e)
-                    Toast.makeText(context, "Error ending meeting: ${e.message}", Toast.LENGTH_LONG).show()
+                    Log.e(TAG, "Error checking meeting existence: ${meeting.id}", e)
+                    Toast.makeText(context, "Error checking meeting: ${e.message}", Toast.LENGTH_LONG).show()
                 }
         } catch (e: Exception) {
-            Log.e(TAG, "Error ending meeting", e)
-            Toast.makeText(context, "Error ending meeting: ${e.message}", Toast.LENGTH_LONG).show()
+            Log.e(TAG, "Exception while ending meeting: ${meeting.id}", e)
+            Toast.makeText(context, "Exception ending meeting: ${e.message}", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun showAttendancePrompt(meeting: CurrentMeeting) {
+        AlertDialog.Builder(context)
+            .setTitle("Take Attendance")
+            .setMessage("Would you like to take attendance for this meeting now?")
+            .setPositiveButton("Take Attendance") { _, _ ->
+                showAttendanceDialog(meeting)
+            }
+            .setNegativeButton("Later") { _, _ ->
+                // User chose to take attendance later, do nothing
+                Toast.makeText(context, "You can take attendance later from the calendar", Toast.LENGTH_SHORT).show()
+            }
+            .show()
     }
 
     private fun showAttendanceDialog(meeting: CurrentMeeting) {
@@ -191,14 +264,14 @@ class CurrentMeetingAdapter(
                             "Custom" -> {
                                 showAttendanceActivity(meeting, meetingData.customAttendeeUids)
                             }
+                            "All Associate Prof" -> {
+                                fetchAndShowAttendance(meeting, listOf("Associate Professor"))
+                            }
+                            "All Assistant Prof" -> {
+                                fetchAndShowAttendance(meeting, listOf("Assistant Professor"))
+                            }
                             "All Faculty" -> {
-                                fetchAndShowAttendance(meeting, listOf("Faculty", "Assistant Professor", "Associate Professor", "Lab Assistant", "HOD", "DEAN", "ADMIN"))
-                            }
-                            "All HODs" -> {
-                                fetchAndShowAttendance(meeting, listOf("HOD", "ADMIN"))
-                            }
-                            "All Deans" -> {
-                                fetchAndShowAttendance(meeting, listOf("DEAN", "ADMIN"))
+                                fetchAndShowAttendance(meeting, listOf("Faculty", "Assistant Professor", "Associate Professor", "Lab Assistant", "HOD", "ADMIN", "Unassigned"))
                             }
                             else -> {
                                 Toast.makeText(context, "Attendance can only be taken for custom meetings with specific attendees.", Toast.LENGTH_LONG).show()

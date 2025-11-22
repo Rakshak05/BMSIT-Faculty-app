@@ -4,8 +4,8 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:padding="28dp"
-    android:minHeight="82dp">
+    android:padding="16dp"
+    android:minHeight="60dp">
 
     <CheckBox
         android:id="@+id/checkBoxAttendee"
@@ -17,14 +17,14 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:orientation="vertical"
-        android:layout_marginStart="16dp">
+        android:layout_marginStart="12dp">
 
         <TextView
             android:id="@+id/textViewAttendeeName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="User Name"
-            android:textSize="21sp"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary" />
 
@@ -33,7 +33,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Dept, Designation"
-            android:textSize="18sp"
+            android:textSize="16sp"
+            android:textStyle="bold"
             android:textColor="@color/text_secondary" />
 
     </LinearLayout>

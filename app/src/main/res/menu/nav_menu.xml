@@ -15,20 +15,20 @@
             android:icon="@drawable/ic_admin"
             android:title="Faculty Members" />
 
-        <!-- Diagnostic tool for troubleshooting -->
-        <item
-            android:id="@+id/nav_diagnostic"
-            android:icon="@drawable/ic_dashboard"
-            android:title="Diagnostics" />
-
         <!-- Download All Users Data as CSV -->
         <item
             android:id="@+id/nav_download_csv"
             android:icon="@drawable/ic_dashboard"
             android:title="Faculty data" />
+            
+        <!-- Profile item moved here as requested -->
+        <item
+            android:id="@+id/nav_profile"
+            android:icon="@drawable/ic_profile"
+            android:title="Profile" />
     </group>
     
-    <!-- Spacer items to push profile to bottom -->
+    <!-- Spacer items to push remaining items to bottom -->
     <group>
         <item android:id="@+id/spacer1" android:title="" />
         <item android:id="@+id/spacer2" android:title="" />
@@ -40,13 +40,5 @@
         <item android:id="@+id/spacer8" android:title="" />
         <item android:id="@+id/spacer9" android:title="" />
         <item android:id="@+id/spacer10" android:title="" />
-    </group>
-    
-    <!-- Profile item at the end -->
-    <group android:checkableBehavior="single">
-        <item
-            android:id="@+id/nav_profile"
-            android:icon="@drawable/ic_profile"
-            android:title="Profile" />
     </group>
 </menu>

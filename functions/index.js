@@ -161,10 +161,7 @@ async function getTargetUids(meeting) {
         const userDoc = await db.collection('users').doc(uid).get();
         if (userDoc.exists) {
           const userData = userDoc.data();
-          // Skip users with "Developer" designation
-          if (userData.designation !== 'Developer') {
-            validUids.push(uid);
-          }
+          validUids.push(uid);
         }
       } catch (error) {
         // If we can't get the user data, skip this user
@@ -182,7 +179,6 @@ async function getTargetUids(meeting) {
   };
   const allowed = roleMap[meeting.attendees] || [];
   if (!allowed.length) return [];
-  // Also exclude Developers from the query
   const snap = await db.collection('users').where('designation', 'in', allowed).get();
   return snap.docs.map(d => d.id);
 }
@@ -214,25 +210,7 @@ async function sendToTokens(tokens, payload) {
 
 async function notifyUsersByUids(uids, notif) {
   if (!uids.length) return;
-  // Filter out Developers before sending notifications
-  const filteredUids = [];
-  for (const uid of uids) {
-    try {
-      const userDoc = await db.collection('users').doc(uid).get();
-      if (userDoc.exists) {
-        const userData = userDoc.data();
-        // Skip users with "Developer" designation
-        if (userData.designation !== 'Developer') {
-          filteredUids.push(uid);
-        }
-      }
-    } catch (error) {
-      // If we can't get the user data, include them to avoid missing notifications
-      filteredUids.push(uid);
-    }
-  }
-  
-  if (!filteredUids.length) return;
+  const filteredUids = uids;
   
   const chunks = []; // chunk uids to limit getAll size
   const size = 10;
@@ -324,10 +302,10 @@ exports.initializeMeetings = functions.https.onRequest(async (req, res) => {
 });
 
 // Function to automatically end meetings based on time constraints
-exports.autoEndMeetings = functions.pubsub.schedule('every 5 minutes from 06:00 to 23:59').timeZone('Asia/Kolkata').onRun(async (context) => {
+exports.autoEndMeetings = functions.pubsub.schedule('every 5 minutes from 00:00 to 23:59').timeZone('Asia/Kolkata').onRun(async (context) => {
   try {
     const now = new Date();
-    const sixHoursInMillis = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+    console.log(`Running autoEndMeetings at ${now.toString()}`);
     
     // Get all active meetings
     const snapshot = await db.collection('meetings')
@@ -335,29 +313,56 @@ exports.autoEndMeetings = functions.pubsub.schedule('every 5 minutes from 06:00 
       .where('dateTime', '<=', admin.firestore.Timestamp.fromDate(now))
       .get();
     
+    console.log(`Found ${snapshot.size} active meetings to check`);
+    
     const batch = db.batch();
     let endedMeetings = 0;
     
+    // Check if we're near the end-of-day cutoff for more aggressive processing
+    const nearEndOfDayCutoff = isNearEndOfDayCutoff(now);
+    
     for (const doc of snapshot.docs) {
-      const meeting = doc.data();
-      const meetingStartTime = meeting.dateTime.toDate();
-      
-      // Check if meeting should be ended automatically
-      const shouldEnd = shouldAutoEndMeeting(meetingStartTime, now);
-      
-      if (shouldEnd) {
-        // Set end time to now
-        batch.update(doc.ref, {
-          endTime: admin.firestore.Timestamp.fromDate(now),
-          status: 'Completed'
-        });
-        endedMeetings++;
+      try {
+        const meeting = doc.data();
+        const meetingStartTime = meeting.dateTime.toDate();
+        
+        // Check if meeting should be ended automatically
+        const shouldEnd = shouldAutoEndMeeting(meetingStartTime, now);
+        
+        // If we're near the end-of-day cutoff, be more aggressive about ending meetings
+        // that started today
+        let shouldEndAggressively = false;
+        if (nearEndOfDayCutoff) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const meetingDate = new Date(meetingStartTime);
+          meetingDate.setHours(0, 0, 0, 0);
+          
+          // If the meeting started today and we're near cutoff, end it
+          if (meetingDate.getTime() === today.getTime()) {
+            shouldEndAggressively = true;
+          }
+        }
+        
+        if (shouldEnd || shouldEndAggressively) {
+          console.log(`Ending meeting ${doc.id} - shouldEnd: ${shouldEnd}, shouldEndAggressively: ${shouldEndAggressively}`);
+          // Set end time to now
+          batch.update(doc.ref, {
+            endTime: admin.firestore.Timestamp.fromDate(now),
+            status: 'Completed'
+          });
+          endedMeetings++;
+        }
+      } catch (docError) {
+        console.error(`Error processing meeting ${doc.id}:`, docError);
       }
     }
     
     if (endedMeetings > 0) {
       await batch.commit();
       console.log(`Auto-ended ${endedMeetings} meetings`);
+    } else {
+      console.log('No meetings needed to be ended');
     }
     
     return null;
@@ -385,113 +390,20 @@ function shouldAutoEndMeeting(startTime, currentTime) {
   return false;
 }
 
-// Function to transcribe audio files using Google Cloud Speech-to-Text
-exports.transcribeAudio = functions.firestore
-  .document('meeting_recordings/{recordingId}')
-  .onCreate(async (snap, context) => {
-    try {
-      const recording = snap.data();
-      const recordingId = context.params.recordingId;
-      
-      console.log('Processing recording for transcription:', recordingId);
-      
-      // Check if this is a valid recording
-      if (!recording || !recording.fileName || !recording.meetingId) {
-        console.log('Invalid recording data');
-        return null;
-      }
-      
-      // Update status to processing
-      await snap.ref.update({
-        status: 'processing',
-        processingStartedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-      
-      // Initialize the Speech client
-      const speech = require('@google-cloud/speech');
-      const client = new speech.SpeechClient();
-      
-      // Get the audio file from Firebase Storage
-      const storage = admin.storage();
-      const bucket = storage.bucket(); // Uses default bucket
-      const file = bucket.file(recording.fileName);
-      
-      // Get file metadata to determine encoding
-      const [metadata] = await file.getMetadata();
-      const contentType = metadata.contentType || 'audio/mp3';
-      
-      // Configure the speech recognition request based on file type
-      let config = {
-        encoding: 'LINEAR16',
-        sampleRateHertz: 16000,
-        languageCode: 'en-US',
-      };
-      
-      // Adjust configuration based on file type
-      if (contentType.includes('mp3') || contentType.includes('mpeg')) {
-        config.encoding = 'MP3';
-      } else if (contentType.includes('wav')) {
-        config.encoding = 'LINEAR16';
-      } else if (contentType.includes('flac')) {
-        config.encoding = 'FLAC';
-      } else {
-        // Default to MP3 for unknown types
-        config.encoding = 'MP3';
-      }
-      
-      // Download the file to a buffer
-      const [fileContents] = await file.download();
-      
-      const audio = {
-        content: fileContents.toString('base64'),
-      };
-      
-      const request = {
-        config: config,
-        audio: audio,
-      };
-      
-      // Perform the transcription
-      console.log('Starting transcription for:', recordingId, 'with encoding:', config.encoding);
-      const [operation] = await client.longRunningRecognize(request);
-      const [response] = await operation.promise();
-      
-      // Process the transcription results
-      const transcription = response.results
-        .map(result => result.alternatives[0].transcript)
-        .join('\n');
-      
-      console.log('Transcription completed for:', recordingId);
-      
-      // Save the transcription to Firestore
-      const transcriptionData = {
-        meetingId: recording.meetingId,
-        transcription: transcription,
-        language: 'en-US',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        isFinal: true
-      };
-      
-      await db.collection('transcriptions').add(transcriptionData);
-      
-      // Update the recording status
-      await snap.ref.update({
-        status: 'transcribed',
-        transcribedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-      
-      console.log('Transcription saved successfully for:', recordingId);
-      return null;
-    } catch (error) {
-      console.error('Error transcribing audio:', error);
-      
-      // Update the recording status to indicate failure
-      await snap.ref.update({
-        status: 'failed',
-        error: error.message,
-        failedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-      
-      return null;
-    }
-  });
+// Add a special function to check if we're close to the 9 PM cutoff
+function isNearEndOfDayCutoff(currentTime) {
+  const currentHour = currentTime.getHours();
+  const currentMinute = currentTime.getMinutes();
+  
+  // If we're between 8:45 PM and 9:00 PM, we should be more aggressive about ending meetings
+  if (currentHour === 20 && currentMinute >= 45) { // 8:45 PM
+    return true;
+  }
+  
+  // If we're past 9 PM
+  if (currentHour >= 21) { // 9 PM
+    return true;
+  }
+  
+  return false;
+}

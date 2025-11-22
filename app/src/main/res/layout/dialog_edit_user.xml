@@ -27,6 +27,21 @@
         android:hint="Full Name" />
 
     <TextView
+        android:id="@+id/textViewPhoneLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Phone Number:" />
+
+    <EditText
+        android:id="@+id/editTextPhone"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="Phone Number"
+        android:inputType="phone" />
+
+    <TextView
         android:id="@+id/textViewDepartmentLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

@@ -1,16 +1,25 @@
 package com.bmsit.faculty
 
-import androidx.appcompat.app.AppCompatActivity
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
+import android.view.Menu
 import android.view.MenuItem
-import android.widget.Toast
+import android.view.View
+import android.widget.*
 import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.Toolbar
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
@@ -18,17 +27,9 @@ import androidx.fragment.app.Fragment
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import java.util.*
-import android.widget.TextView
-import android.util.Log
-import com.bmsit.faculty.FacultyMembersFragment
-import android.widget.ImageView
 import com.google.firebase.storage.FirebaseStorage
-import android.graphics.BitmapFactory
-import android.view.View
-import android.widget.Button
-import com.bmsit.faculty.Meeting
-import android.widget.LinearLayout
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
@@ -137,8 +138,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            // Check every 30 minutes
-            val interval = 30 * 60 * 1000L
+            // Check every 15 minutes instead of 30 for more responsive meeting ending
+            val interval = 15 * 60 * 1000L
             alarmManager.setRepeating(
                 AlarmManager.RTC_WAKEUP,
                 System.currentTimeMillis() + interval,
@@ -177,7 +178,6 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             Log.d("MainActivity", "setupNavigationMenuBasedOnUser started")
             val currentUser = auth.currentUser
             val facultyMembersMenuItem = navigationView.menu.findItem(R.id.nav_admin)
-            val diagnosticMenuItem = navigationView.menu.findItem(R.id.nav_diagnostic)
             val downloadCSVMenuItem = navigationView.menu.findItem(R.id.nav_download_csv)
             val profileMenuItem = navigationView.menu.findItem(R.id.nav_profile)
             
@@ -191,14 +191,11 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                         try {
                             if (document != null && document.exists()) {
                                 val userDesignation = document.getString("designation")
-                                // Make faculty members panel accessible to ALL users
-                                facultyMembersMenuItem.isVisible = true
+                                // Show faculty members panel only to HODs and HOD's Assistants
+                                facultyMembersMenuItem.isVisible = (userDesignation == "HOD" || userDesignation == "HOD'S ASSISTANT")
                                 
-                                // Show diagnostic tools only to Developers
-                                diagnosticMenuItem.isVisible = (userDesignation == "Developer")
-                                
-                                // Show download CSV option only to administrators
-                                downloadCSVMenuItem.isVisible = (userDesignation == "ADMIN" || userDesignation == "DEAN" || userDesignation == "HOD" || userDesignation == "Developer")
+                                // Show download CSV option only to HODs and HOD's Assistants
+                                downloadCSVMenuItem.isVisible = (userDesignation == "HOD" || userDesignation == "HOD'S ASSISTANT")
                                 
                                 // Profile is always visible
                                 profileMenuItem?.isVisible = true
@@ -215,13 +212,12 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                                 }
                                 
                                 // Load profile picture
-                                loadProfilePicture(currentUser.uid, headerProfileImage)
+                                loadProfilePicture(currentUser.uid, headerProfileImage, name)
                                 
                                 Log.d("MainActivity", "User menu setup completed")
                             } else {
-                                // Make faculty members panel accessible to ALL users
-                                facultyMembersMenuItem.isVisible = true
-                                diagnosticMenuItem.isVisible = false
+                                // Hide faculty members panel for users without proper designation
+                                facultyMembersMenuItem.isVisible = false
                                 downloadCSVMenuItem.isVisible = false
                                 profileMenuItem?.isVisible = true
                                 val displayName = currentUser.displayName?.trim()
@@ -232,7 +228,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                                 }
                                 
                                 // Load profile picture
-                                loadProfilePicture(currentUser.uid, headerProfileImage)
+                                loadProfilePicture(currentUser.uid, headerProfileImage, "U")
                                 
                                 Log.d("MainActivity", "User document not found, using default menu setup")
                             }
@@ -243,9 +239,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                                 Log.e("MainActivity", "PERMISSION_DENIED error: Check Firebase Firestore rules")
                                 Toast.makeText(this, "PERMISSION_DENIED ERROR: The app needs read access to the 'users' collection. Update Firebase Firestore security rules. See FIREBASE_RULES_FIX.md for instructions.", Toast.LENGTH_LONG).show()
                             }
-                            // Make faculty members panel accessible to ALL users
-                            facultyMembersMenuItem.isVisible = true
-                            diagnosticMenuItem.isVisible = false // Keep diagnostic hidden by default on error
+                            // Hide faculty members panel on error
+                            facultyMembersMenuItem.isVisible = false
                             downloadCSVMenuItem.isVisible = false
                             profileMenuItem?.isVisible = true
                         }
@@ -258,11 +253,9 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                                 Toast.makeText(this, "PERMISSION_DENIED ERROR: The app needs read access to the 'users' collection. Update Firebase Firestore security rules. See FIREBASE_RULES_FIX.md for instructions.", Toast.LENGTH_LONG).show()
                             }
                             
-                            // Make faculty members panel accessible to ALL users
-                            // This prevents the menu from disappearing due to network issues
-                            Log.w("MainActivity", "Failed to fetch user data, keeping faculty members menu visible")
-                            facultyMembersMenuItem.isVisible = true
-                            diagnosticMenuItem.isVisible = false // Keep diagnostic hidden by default on error
+                            // Hide faculty members panel on failure
+                            Log.w("MainActivity", "Failed to fetch user data, hiding faculty members menu")
+                            facultyMembersMenuItem.isVisible = false
                             downloadCSVMenuItem.isVisible = false
                             profileMenuItem?.isVisible = true
                         } catch (e: Exception) {
@@ -270,9 +263,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                         }
                     }
             } else {
-                // Make faculty members panel accessible to ALL users
-                facultyMembersMenuItem.isVisible = true
-                diagnosticMenuItem.isVisible = false
+                // Hide faculty members panel for non-logged in users
+                facultyMembersMenuItem.isVisible = false
                 downloadCSVMenuItem.isVisible = false
                 profileMenuItem?.isVisible = true
                 headerGreeting?.text = "Welcome back,"
@@ -334,7 +326,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                                         val currentDate = Date()
                                         
                                         if (meetingDate.before(currentDate)) {
-                                            // This is a past meeting
+                                            // This is a past meeting (scheduled time has passed)
                                             if (meeting.endTime != null) {
                                                 // Meeting was conducted, count as attended
                                                 meetingsAttended++
@@ -343,8 +335,20 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                                                 val durationMinutes = durationMillis / (1000 * 60)
                                                 totalMeetingMinutes += durationMinutes
                                             } else {
-                                                // Meeting has passed but no end time is recorded, count as missed
-                                                meetingsMissed++
+                                                // Meeting has passed but no end time is recorded
+                                                // Check if the current time is past the expected end time
+                                                val calendar = Calendar.getInstance()
+                                                calendar.time = meetingDate
+                                                // Ensure duration is valid, default to 60 minutes if not set properly
+                                                val duration = if (meeting.duration > 0) meeting.duration else 60
+                                                calendar.add(Calendar.MINUTE, duration)
+                                                val expectedEndTime = calendar.time
+                                                
+                                                // Only count as missed if we're past the expected end time
+                                                if (currentDate.after(expectedEndTime)) {
+                                                    meetingsMissed++
+                                                }
+                                                // If we're still within the expected meeting duration, don't count it yet
                                             }
                                         }
                                         // For future meetings, we don't count them in either category
@@ -400,7 +404,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             return true
         }
         
-        // For group meetings (All Faculty, All HODs, etc.), we would need to check if the user 
+        // For group meetings (All Associate Prof, All Assistant Prof, etc.), we would need to check if the user 
         // belongs to that group, but for simplicity, we'll skip this for now
         // In a production app, you would implement group membership checking here
         
@@ -433,28 +437,90 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
     }
 
-    private fun loadProfilePicture(userId: String, imageView: ImageView) {
+    private fun loadProfilePicture(userId: String, imageView: ImageView, userName: String) {
         try {
-            // Reference to the profile picture in Firebase Storage with explicit bucket
-            val storageRef = storage.reference.child("profile_pictures/$userId.jpg")
-            
-            val ONE_MEGABYTE: Long = 1024 * 1024
-            storageRef.getBytes(ONE_MEGABYTE).addOnSuccessListener { bytes ->
-                // Successfully downloaded data, convert to bitmap and display
-                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                imageView.setImageBitmap(bitmap)
-                imageView.background = null // Remove the default background
-            }.addOnFailureListener {
-                // Handle any errors - use default image
-                Log.d("MainActivity", "No profile picture found for user: $userId, using default")
-                // Set default image resource to ensure it's visible
-                imageView.setImageResource(R.drawable.universalpp)
-            }
+            // Show user initials instead of profile picture
+            showUserInitials(imageView, userName)
         } catch (e: Exception) {
             Log.e("MainActivity", "Error loading profile picture", e)
-            // Set default image resource to ensure it's visible
+            // Show user initials as fallback
+            showUserInitials(imageView, "U")
+        }
+    }
+    
+    private fun showUserInitials(imageView: ImageView, userName: String) {
+        try {
+            // Extract initials from the user's name
+            val initials = getUserInitials(userName)
+            
+            // Create a bitmap with the initials
+            val bitmap = createInitialsBitmap(initials)
+            
+            // Set the bitmap to the ImageView
+            imageView.setImageBitmap(bitmap)
+            imageView.background = null // Remove any background
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error creating initials bitmap", e)
+            // Fallback to default image if there's an error
             imageView.setImageResource(R.drawable.universalpp)
         }
+    }
+    
+    private fun getUserInitials(name: String): String {
+        return try {
+            val trimmedName = name.trim()
+            if (trimmedName.isEmpty()) return "U"
+            
+            val names = trimmedName.split("\\s+".toRegex()).filter { it.isNotEmpty() }
+            when (names.size) {
+                0 -> "U"
+                1 -> names[0].firstOrNull()?.uppercaseChar()?.toString() ?: "U"
+                else -> {
+                    val firstInitial = names[0].firstOrNull()?.uppercaseChar()?.toString() ?: ""
+                    val lastInitial = names[names.size - 1].firstOrNull()?.uppercaseChar()?.toString() ?: ""
+                    firstInitial + lastInitial
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error extracting initials from name: $name", e)
+            "U"
+        }
+    }
+    
+    private fun createInitialsBitmap(initials: String): Bitmap {
+        // Define the size of the bitmap (in pixels)
+        val size = 200
+        
+        // Create a bitmap and canvas
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        
+        // Draw background (blue color) - using a fixed color instead of context
+        val backgroundPaint = Paint().apply {
+            color = Color.parseColor("#FF6200EE") // Using purple_500 color directly
+            isAntiAlias = true
+        }
+        canvas.drawCircle((size / 2).toFloat(), (size / 2).toFloat(), (size / 2).toFloat(), backgroundPaint)
+        
+        // Draw text (initials)
+        val textPaint = Paint().apply {
+            color = Color.WHITE
+            textSize = size / 2.toFloat()
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+            isFakeBoldText = true
+        }
+        
+        // Measure text to center it
+        val textBounds = Rect()
+        textPaint.getTextBounds(initials, 0, initials.length, textBounds)
+        
+        // Draw the text centered
+        val x = size / 2.toFloat()
+        val y = (size / 2 + (textBounds.bottom - textBounds.top) / 2).toFloat()
+        canvas.drawText(initials, x, y, textPaint)
+        
+        return bitmap
     }
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
@@ -478,7 +544,12 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 when (item.itemId) {
                     R.id.nav_dashboard -> replaceFragment(DashboardFragment())
                     R.id.nav_calendar -> replaceFragment(CalendarFragment())
-                    R.id.nav_profile -> replaceFragment(ProfileFragment())
+                    R.id.nav_profile -> {
+                        // Launch the new ProfileActivity instead of loading ProfileFragment
+                        val intent = Intent(this, ProfileActivity::class.java)
+                        startActivity(intent)
+                        isReplacingFragment = false // Reset immediately since we're not replacing a fragment
+                    }
                     R.id.nav_admin -> {
                         try {
                             replaceFragment(FacultyMembersFragment())
@@ -489,7 +560,6 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                             replaceFragment(DashboardFragment())
                         }
                     }
-                    R.id.nav_diagnostic -> replaceFragment(DiagnosticFragment())
                     R.id.nav_download_csv -> {
                         // Handle CSV download
                         val currentUser = auth.currentUser
@@ -498,26 +568,30 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                                 .addOnSuccessListener { document ->
                                     if (document != null && document.exists()) {
                                         val userDesignation = document.getString("designation")
-                                        // Check if user is admin before allowing download
-                                        if (userDesignation == "ADMIN" || userDesignation == "DEAN" || userDesignation == "HOD" || userDesignation == "Developer") {
+                                        // Check if user is HOD or HOD's Assistant before allowing download
+                                        if (userDesignation == "HOD" || userDesignation == "HOD'S ASSISTANT") {
                                             exportAllUsersDataToCSV()
                                         } else {
-                                            Toast.makeText(this, "Only administrators can download user data", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(this, "Only HODs and HOD's Assistants can download faculty data.", Toast.LENGTH_LONG).show()
                                         }
+                                    } else {
+                                        Toast.makeText(this, "Error: User data not found.", Toast.LENGTH_LONG).show()
                                     }
                                 }
-                                .addOnFailureListener { 
-                                    Toast.makeText(this, "Error checking user permissions", Toast.LENGTH_SHORT).show()
+                                .addOnFailureListener { exception ->
+                                    Toast.makeText(this, "Error checking user authorization: ${exception.message}", Toast.LENGTH_LONG).show()
                                 }
                         } else {
-                            Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, "You must be logged in to download data.", Toast.LENGTH_LONG).show()
                         }
                     }
                 }
-                // Reset the flag after a delay to allow next navigation
-                handler.postDelayed({
-                    isReplacingFragment = false
-                }, 500)
+                // Reset the flag after a delay to allow next navigation (except for profile)
+                if (item.itemId != R.id.nav_profile) {
+                    handler.postDelayed({
+                        isReplacingFragment = false
+                    }, 500)
+                }
             }, 300)
             
             Log.d("MainActivity", "Navigation item handled successfully")

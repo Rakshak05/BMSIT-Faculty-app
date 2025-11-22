@@ -98,19 +98,10 @@ class MeetingsForDateActivity : AppCompatActivity() {
 
                             if (isSameDay(meetingCalendar, selectedDate)) {
                                 // Check if user can see this meeting
-                                val validDesignationsForFacultyMeeting = listOf(
-                                    "Faculty",
-                                    "Assistant Professor",
-                                    "Associate Professor",
-                                    "Lab Assistant",
-                                    "HOD",
-                                    "DEAN",
-                                    "ADMIN"
-                                )
                                 val canSeeMeeting = when (meeting.attendees) {
-                                    "All Faculty" -> userDesignation in validDesignationsForFacultyMeeting
-                                    "All Deans" -> userDesignation == "DEAN" || userDesignation == "ADMIN"
-                                    "All HODs" -> userDesignation == "HOD" || userDesignation == "ADMIN"
+                                    "All Associate Prof" -> userDesignation == "Associate Professor"
+                                    "All Assistant Prof" -> userDesignation == "Assistant Professor"
+                                    "All Faculty" -> userDesignation in listOf("Faculty", "Assistant Professor", "Associate Professor", "Lab Assistant", "HOD", "ADMIN", "Unassigned")
                                     "Custom" -> meeting.customAttendeeUids.contains(currentUser.uid)
                                     else -> false
                                 }
@@ -232,62 +223,19 @@ class MeetingsForDateActivity : AppCompatActivity() {
                 val meetingListener = object : DateMeetingsAdapter.OnMeetingInteractionListener {
                     override fun onMeetingClick(meeting: Meeting) {
                         try {
-                            // When a meeting item is clicked, show options based on user role
-                            val isHost = meeting.scheduledBy == currentUid
-
-                            if (isHost) {
-                                // Host can take attendance or view transcription
-                                val options = arrayOf("Take Attendance", "View Transcription")
-                                AlertDialog.Builder(this@MeetingsForDateActivity)
-                                    .setTitle(meeting.title)
-                                    .setItems(options) { _, which ->
-                                        try {
-                                            when (which) {
-                                                0 -> showAttendanceDialog(meeting)
-                                                1 -> showTranscription(meeting)
-                                            }
-                                        } catch (e: Exception) {
-                                            Log.e("MeetingsForDateActivity", "Error handling meeting option selection", e)
-                                            Toast.makeText(this@MeetingsForDateActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                    .show()
-                            } else {
-                                // Attendee can only view transcription
-                                showTranscription(meeting)
-                            }
+                            // When a meeting item is clicked, toggle expansion (handled in adapter)
+                            // No need to show dialog anymore since we have inline attendance option
                         } catch (e: Exception) {
                             Log.e("MeetingsForDateActivity", "Error handling meeting click", e)
                             Toast.makeText(this@MeetingsForDateActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
-
-                    override fun onSetReminderClick(meeting: Meeting) {
+                    
+                    override fun onTakeAttendanceClick(meeting: Meeting) {
                         try {
-                            // Not implemented for this activity
-                            Toast.makeText(this@MeetingsForDateActivity, "Reminder feature not available in this view", Toast.LENGTH_SHORT).show()
+                            showAttendanceDialog(meeting)
                         } catch (e: Exception) {
-                            Log.e("MeetingsForDateActivity", "Error handling set reminder click", e)
-                            Toast.makeText(this@MeetingsForDateActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-
-                    override fun onEditClick(meeting: Meeting) {
-                        try {
-                            // Not implemented for this activity
-                            Toast.makeText(this@MeetingsForDateActivity, "Edit feature not available in this view", Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            Log.e("MeetingsForDateActivity", "Error handling edit click", e)
-                            Toast.makeText(this@MeetingsForDateActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-
-                    override fun onCancelClick(meeting: Meeting) {
-                        try {
-                            // Not implemented for this activity
-                            Toast.makeText(this@MeetingsForDateActivity, "Cancel feature not available in this view", Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            Log.e("MeetingsForDateActivity", "Error handling cancel click", e)
+                            Log.e("MeetingsForDateActivity", "Error handling take attendance click", e)
                             Toast.makeText(this@MeetingsForDateActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -299,47 +247,14 @@ class MeetingsForDateActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             Log.e("MeetingsForDateActivity", "Error in updateUI", e)
-            Toast.makeText(this, "Error updating UI: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this@MeetingsForDateActivity, "Error updating UI: ${e.message}", Toast.LENGTH_LONG).show()
             progressBar.visibility = View.GONE
-        }
-    }
-
-    private fun showAttendanceDialog(meeting: Meeting) {
-        // Get the list of attendees for this meeting
-        when (meeting.attendees) {
-            "Custom" -> {
-                if (meeting.customAttendeeUids.isEmpty()) {
-                    Toast.makeText(this, "No attendees found for this meeting.", Toast.LENGTH_SHORT).show()
-                    return
-                }
-                
-                // Show attendance dialog for custom attendees
-                val intent = android.content.Intent(this, AttendanceActivity::class.java).apply {
-                    putExtra("MEETING_ID", meeting.id)
-                    putExtra("MEETING_TITLE", meeting.title)
-                    putStringArrayListExtra("ATTENDEE_UIDS", ArrayList(meeting.customAttendeeUids))
-                }
-                startActivity(intent)
-            }
-            "All Faculty" -> {
-                fetchAndShowAttendance(meeting, listOf("Faculty", "Assistant Professor", "Associate Professor", "Lab Assistant", "HOD", "DEAN", "ADMIN"))
-            }
-            "All HODs" -> {
-                fetchAndShowAttendance(meeting, listOf("HOD", "ADMIN"))
-            }
-            "All Deans" -> {
-                fetchAndShowAttendance(meeting, listOf("DEAN", "ADMIN"))
-            }
-            else -> {
-                // For unknown meeting types, show a message
-                Toast.makeText(this, "Attendance can only be taken for custom meetings with specific attendees.", Toast.LENGTH_LONG).show()
-            }
         }
     }
 
     private fun fetchAndShowAttendance(meeting: Meeting, designations: List<String>) {
         // Show loading message
-        Toast.makeText(this, "Fetching attendee list...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this@MeetingsForDateActivity, "Fetching attendee list...", Toast.LENGTH_SHORT).show()
         
         // Fetch users with specified designations
         db.collection("users")
@@ -349,7 +264,7 @@ class MeetingsForDateActivity : AppCompatActivity() {
                 val attendeeUids = result.map { it.id }
                 
                 if (attendeeUids.isEmpty()) {
-                    Toast.makeText(this, "No attendees found for this meeting.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MeetingsForDateActivity, "No attendees found for this meeting.", Toast.LENGTH_SHORT).show()
                     return@addOnSuccessListener
                 }
 
@@ -362,56 +277,42 @@ class MeetingsForDateActivity : AppCompatActivity() {
                 startActivity(intent)
             }
             .addOnFailureListener { exception ->
-                Toast.makeText(this, "Error fetching attendees: ${exception.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MeetingsForDateActivity, "Error fetching attendees: ${exception.message}", Toast.LENGTH_SHORT).show()
             }
     }
 
-    private fun showTranscription(meeting: Meeting) {
-        // Check if meeting has transcription
-        db.collection("transcriptions")
-            .whereEqualTo("meetingId", meeting.id)
-            .limit(1)
-            .get()
-            .addOnSuccessListener { result ->
-                if (result.isEmpty) {
-                    // Check if user is host or participant
-                    val currentUser = auth.currentUser?.uid ?: return@addOnSuccessListener
-                    val isHost = meeting.scheduledBy == currentUser
-                    
-                    if (isHost) {
-                        // Host - inform about recording options
-                        AlertDialog.Builder(this)
-                            .setTitle("Meeting Recording")
-                            .setMessage("You haven't recorded this meeting using the 'BMSIT Faculty' app. You can upload a recorded/saved .mp3 file from your device. View the transcription to upload a recording.")
-                            .setPositiveButton("View Transcription") { _, _ ->
-                                // Show transcription activity where they can upload
-                                val intent = android.content.Intent(this, MeetingTranscriptionActivity::class.java).apply {
-                                    putExtra("MEETING_ID", meeting.id)
-                                    putExtra("MEETING_TITLE", meeting.title)
-                                }
-                                startActivity(intent)
-                            }
-                            .setNegativeButton("Cancel", null)
-                            .show()
-                    } else {
-                        // Participant - inform that no transcript is available
-                        AlertDialog.Builder(this)
-                            .setTitle("Transcription Not Available")
-                            .setMessage("The transcription for this meeting is not available yet. Please check back later or contact the meeting host.")
-                            .setPositiveButton("OK", null)
-                            .show()
-                    }
-                } else {
-                    // Show transcription activity
-                    val intent = android.content.Intent(this, MeetingTranscriptionActivity::class.java).apply {
-                        putExtra("MEETING_ID", meeting.id)
-                        putExtra("MEETING_TITLE", meeting.title)
-                    }
-                    startActivity(intent)
+    private fun showAttendanceDialog(meeting: Meeting) {
+        // Get the list of attendees for this meeting
+        when (meeting.attendees) {
+            "Custom" -> {
+                if (meeting.customAttendeeUids.isEmpty()) {
+                    Toast.makeText(this@MeetingsForDateActivity, "No attendees found for this meeting.", Toast.LENGTH_SHORT).show()
+                    return
                 }
+                
+                // Show attendance dialog for custom attendees
+                val intent = android.content.Intent(this, AttendanceActivity::class.java).apply {
+                    putExtra("MEETING_ID", meeting.id)
+                    putExtra("MEETING_TITLE", meeting.title)
+                    putStringArrayListExtra("ATTENDEE_UIDS", ArrayList(meeting.customAttendeeUids))
+                }
+                startActivity(intent)
             }
-            .addOnFailureListener {
-                Toast.makeText(this, "Error checking transcription: ${it.message}", Toast.LENGTH_SHORT).show()
+            "All Associate Prof" -> {
+                fetchAndShowAttendance(meeting, listOf("Associate Professor"))
             }
+            "All Assistant Prof" -> {
+                fetchAndShowAttendance(meeting, listOf("Assistant Professor"))
+            }
+            "All Faculty" -> {
+                fetchAndShowAttendance(meeting, listOf("Faculty", "Assistant Professor", "Associate Professor", "Lab Assistant", "HOD", "ADMIN", "Unassigned"))
+            }
+            else -> {
+                // For unknown meeting types, show a message
+                Toast.makeText(this@MeetingsForDateActivity, "Attendance can only be taken for custom meetings with specific attendees.", Toast.LENGTH_LONG).show()
+            }
+        }
     }
+
 }
+

@@ -1,6 +1,11 @@
 package com.bmsit.faculty
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -70,7 +75,7 @@ class UserAdapter(
             holder.profileImageView.setImageResource(R.drawable.universalpp)
             
             // Load profile picture
-            loadProfilePicture(currentUser.uid, holder.profileImageView)
+            loadProfilePicture(currentUser.uid, holder.profileImageView, currentUser.name)
         } catch (e: Exception) {
             Log.e("UserAdapter", "Error in onBindViewHolder at position $position", e)
             // Set default values to prevent crashes
@@ -88,24 +93,89 @@ class UserAdapter(
         0
     }
     
-    private fun loadProfilePicture(userId: String, imageView: ImageView) {
+    private fun loadProfilePicture(userId: String, imageView: ImageView, userName: String) {
         try {
-            // Reference to the profile picture in Firebase Storage with explicit bucket
-            val storage = FirebaseStorage.getInstance("gs://bmsit-faculty-30834.firebasestorage.app")
-            val storageRef = storage.getReference("profile_pictures/$userId.jpg")
-            
-            val ONE_MEGABYTE: Long = 1024 * 1024
-            storageRef.getBytes(ONE_MEGABYTE).addOnSuccessListener { bytes ->
-                // Successfully downloaded data, convert to bitmap and display
-                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                imageView.setImageBitmap(bitmap)
-            }.addOnFailureListener {
-                // Handle any errors - default image is already set
-                Log.d("UserAdapter", "No profile picture found for user: $userId, using default")
-            }
+            // Show user initials instead of profile picture
+            showUserInitials(imageView, userName)
         } catch (e: Exception) {
             Log.e("UserAdapter", "Error loading profile picture", e)
-            // Default image is already set
+            // Show user initials as fallback
+            showUserInitials(imageView, "U")
         }
+    }
+    
+    private fun showUserInitials(imageView: ImageView, userName: String) {
+        try {
+            // Extract initials from the user's name
+            val initials = getUserInitials(userName)
+            
+            // Create a bitmap with the initials
+            val bitmap = createInitialsBitmap(initials)
+            
+            // Set the bitmap to the ImageView
+            imageView.setImageBitmap(bitmap)
+            imageView.background = null // Remove any background
+        } catch (e: Exception) {
+            Log.e("UserAdapter", "Error creating initials bitmap", e)
+            // Fallback to default image if there's an error
+            imageView.setImageResource(R.drawable.universalpp)
+        }
+    }
+    
+    private fun getUserInitials(name: String): String {
+        return try {
+            val trimmedName = name.trim()
+            if (trimmedName.isEmpty()) return "U"
+            
+            val names = trimmedName.split("\\s+".toRegex()).filter { it.isNotEmpty() }
+            when (names.size) {
+                0 -> "U"
+                1 -> names[0].firstOrNull()?.uppercaseChar()?.toString() ?: "U"
+                else -> {
+                    val firstInitial = names[0].firstOrNull()?.uppercaseChar()?.toString() ?: ""
+                    val lastInitial = names[names.size - 1].firstOrNull()?.uppercaseChar()?.toString() ?: ""
+                    firstInitial + lastInitial
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("UserAdapter", "Error extracting initials from name: $name", e)
+            "U"
+        }
+    }
+    
+    private fun createInitialsBitmap(initials: String): Bitmap {
+        // Define the size of the bitmap (in pixels)
+        val size = 200
+        
+        // Create a bitmap and canvas
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        
+        // Draw background (blue color) - using a fixed color instead of context
+        val backgroundPaint = Paint().apply {
+            color = Color.parseColor("#FF6200EE") // Using purple_500 color directly
+            isAntiAlias = true
+        }
+        canvas.drawCircle((size / 2).toFloat(), (size / 2).toFloat(), (size / 2).toFloat(), backgroundPaint)
+        
+        // Draw text (initials)
+        val textPaint = Paint().apply {
+            color = Color.WHITE
+            textSize = size / 2.toFloat()
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+            isFakeBoldText = true
+        }
+        
+        // Measure text to center it
+        val textBounds = Rect()
+        textPaint.getTextBounds(initials, 0, initials.length, textBounds)
+        
+        // Draw the text centered
+        val x = size / 2.toFloat()
+        val y = (size / 2 + (textBounds.bottom - textBounds.top) / 2).toFloat()
+        canvas.drawText(initials, x, y, textPaint)
+        
+        return bitmap
     }
 }

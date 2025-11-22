@@ -67,10 +67,13 @@
         <activity android:name="com.bmsit.faculty.AttendanceActivity" android:label="Take Attendance" android:exported="false" />
         <activity android:name="com.bmsit.faculty.MissedMeetingsActivity" android:label="Missed Meetings" android:exported="false" />
         <activity android:name="com.bmsit.faculty.AttendedMeetingsActivity" android:label="Attended Meetings" android:exported="false" />
-        <activity android:name="com.bmsit.faculty.MeetingTranscriptionActivity" android:label="Meeting Transcription" android:exported="false" />
         <activity android:name="com.bmsit.faculty.MeetingsForDateActivity" android:label="Meetings for Date" android:exported="false" />
         <activity android:name="com.bmsit.faculty.TestActivity" android:label="Test Activity" android:exported="false">
         </activity>
+        <activity android:name="com.bmsit.faculty.TestEmailActivity" android:label="Email Test" android:exported="false" />
+        <activity android:name="com.bmsit.faculty.EmailDebugActivity" android:label="Email Debug" android:exported="false" />
+        <activity android:name="com.bmsit.faculty.CertificateDebugActivity" android:label="Certificate Debug" android:exported="false" />
+        <activity android:name="com.bmsit.faculty.ProfileActivity" android:label="My Profile" android:exported="false" />
 
         <!-- File Provider for CSV Export -->
         <provider

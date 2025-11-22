@@ -1,6 +1,7 @@
 package com.bmsit.faculty
 
 import android.app.AlertDialog
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.fragment.app.Fragment
@@ -78,14 +79,10 @@ class FacultyMembersFragment : Fragment(), UserAdapter.OnItemClickListener {
     
     private fun openUserProfile(user: User) {
         try {
-            // Create and navigate to the profile fragment for the selected user
-            val profileFragment = ProfileFragment.newInstance(user.uid)
-            
-            // Replace the current fragment with the profile fragment
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, profileFragment)
-                .addToBackStack(null)
-                .commit()
+            // Create and start the profile activity for the selected user
+            val intent = Intent(activity, ProfileActivity::class.java)
+            intent.putExtra("USER_ID", user.uid)
+            startActivity(intent)
         } catch (e: Exception) {
             Log.e("FacultyMembersFragment", "Error opening user profile", e)
             Toast.makeText(context, "Error opening profile: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -100,8 +97,8 @@ class FacultyMembersFragment : Fragment(), UserAdapter.OnItemClickListener {
                     .addOnSuccessListener { document ->
                         if (document != null && document.exists()) {
                             val userDesignation = document.getString("designation")
-                            // Make faculty members panel accessible to ADMIN users
-                            val isAdmin = (userDesignation == "ADMIN" || userDesignation == "DEAN" || userDesignation == "HOD")
+                            // Allow access to faculty members panel only for HODs and HOD's Assistants
+                            val isAdmin = (userDesignation == "HOD" || userDesignation == "HOD'S ASSISTANT")
                             callback(isAdmin)
                         } else {
                             callback(false)
@@ -133,7 +130,7 @@ class FacultyMembersFragment : Fragment(), UserAdapter.OnItemClickListener {
             val departments = arrayOf("Unassigned", "AIML") // Only keeping AIML as per new requirements
             
             // For future reference, other designations were:
-            // "ADMIN", "DEAN", "Others", "Unassigned"
+            // "ADMIN", "Others", "Unassigned"
             // Order by authority level (high -> low), then include Others and Unassigned at end
             val designations = arrayOf("HOD", "Associate Professor", "Assistant Professor", "Lab Assistant", "HOD's Assistant", "Unassigned")
 

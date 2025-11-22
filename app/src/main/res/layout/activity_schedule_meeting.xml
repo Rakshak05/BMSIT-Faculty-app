@@ -22,30 +22,56 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <EditText
+        <TextView
+            android:id="@+id/textViewReasonLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/reason_box_label"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/textViewScheduleTitle"
+            app:layout_constraintBottom_toBottomOf="@id/editTextMeetingTitle" />
+
+        <AutoCompleteTextView
             android:id="@+id/editTextMeetingTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             android:layout_marginTop="24dp"
-            android:hint="Meeting Title / Reason"
             android:inputType="textCapSentences"
             android:textColor="?android:attr/textColorPrimary"
             android:textColorHint="?android:attr/textColorSecondary"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintStart_toEndOf="@id/textViewReasonLabel"
             app:layout_constraintTop_toBottomOf="@id/textViewScheduleTitle" />
 
-        <EditText
+        <TextView
+            android:id="@+id/textViewVenueLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/venue_box_label"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/editTextMeetingTitle"
+            app:layout_constraintBottom_toBottomOf="@id/editTextMeetingLocation" />
+
+        <AutoCompleteTextView
             android:id="@+id/editTextMeetingLocation"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             android:layout_marginTop="16dp"
-            android:hint="Location (e.g., Conference Hall)"
             android:inputType="textCapWords"
             android:textColor="?android:attr/textColorPrimary"
             android:textColorHint="?android:attr/textColorSecondary"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintStart_toEndOf="@id/textViewVenueLabel"
             app:layout_constraintTop_toBottomOf="@id/editTextMeetingTitle" />
 
         <!-- Date Picker -->
@@ -110,15 +136,12 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/spinnerDuration" />
 
-        <!-- Select Attendees Button (visible only for Custom) -->
         <Button
-            android:id="@+id/buttonSelectAttendees"
-            android:layout_width="0dp"
+            android:id="@+id/buttonEditCustomAttendees"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:layout_marginTop="12dp"
-            android:textColor="@color/text_primary"
-            android:text="Select Attendees"
+            android:text="Edit Custom Attendees"
+            android:layout_marginTop="32dp"
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -128,11 +151,11 @@
             android:id="@+id/buttonSaveMeeting"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="40dp"
             android:text="Save Meeting"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/buttonSelectAttendees" />
+            app:layout_constraintTop_toBottomOf="@id/buttonEditCustomAttendees" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

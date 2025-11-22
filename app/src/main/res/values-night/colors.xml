@@ -4,6 +4,8 @@
     <color name="text_primary">#FFFFFFFF</color>
     <color name="text_secondary">#B3FFFFFF</color>
     <color name="colorError">#FF5252</color>
+    <!-- Navigation item colors for dark theme -->
+    <color name="nav_item_default">#B3FFFFFF</color>
     <!-- Meeting background colors for dark theme -->
     <color name="hosted_meeting_background">#4CAF50</color> <!-- Green -->
     <color name="attended_meeting_background">#2196F3</color> <!-- Blue -->

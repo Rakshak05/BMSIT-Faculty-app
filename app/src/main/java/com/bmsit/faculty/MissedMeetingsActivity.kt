@@ -115,7 +115,7 @@ class MissedMeetingsActivity : AppCompatActivity() {
             return true
         }
         
-        // For group meetings (All Faculty, All HODs, etc.), we would need to check if the user 
+        // For group meetings (All Associate Prof, All Assistant Prof, etc.), we would need to check if the user 
         // belongs to that group, but for simplicity, we'll skip this for now
         // In a production app, you would implement group membership checking here
         

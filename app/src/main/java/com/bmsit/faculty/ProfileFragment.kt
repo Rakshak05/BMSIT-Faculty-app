@@ -2,9 +2,15 @@ package com.bmsit.faculty
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -18,8 +24,8 @@ import com.google.android.material.card.MaterialCardView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
-import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -76,30 +82,57 @@ class ProfileFragment : Fragment() {
         val textViewEmail = view.findViewById<TextView>(R.id.textViewProfileEmail)
         val textViewDepartment = view.findViewById<TextView>(R.id.textViewProfileDepartment)
         val imageViewEditDepartmentDesignation = view.findViewById<ImageView>(R.id.imageViewEditDepartmentDesignation)
-        val textViewMeetingsAttended = view.findViewById<TextView>(R.id.textViewMeetingsAttendedCount)
-        val textViewMeetingsMissed = view.findViewById<TextView>(R.id.textViewMeetingsMissedCount)
-        val textViewMinutesOfMeeting = view.findViewById<TextView>(R.id.textViewMinutesOfMeeting)
         val buttonSignOut = view.findViewById<Button>(R.id.buttonSignOut)
-        val cardMeetingsAttended = view.findViewById<MaterialCardView>(R.id.cardMeetingsAttended)
-        val cardMeetingsMissed = view.findViewById<MaterialCardView>(R.id.cardMeetingsMissed)
+        
+        // New UI elements for Details section
+        val textViewPhoneNumber = view.findViewById<TextView>(R.id.textViewPhoneNumber)
+        val textViewEmailDetail = view.findViewById<TextView>(R.id.textViewEmailDetail)
+        val textViewDepartmentDetail = view.findViewById<TextView>(R.id.textViewDepartmentDetail)
+        val textViewDesignationDetail = view.findViewById<TextView>(R.id.textViewDesignationDetail)
+        
+        // New UI elements for Activity section
+        val textViewMeetingsAttendedDetail = view.findViewById<TextView>(R.id.textViewMeetingsAttendedDetail)
+        val textViewMeetingsMissedDetail = view.findViewById<TextView>(R.id.textViewMeetingsMissedDetail)
+        val boxMeetingsAttended = view.findViewById<LinearLayout>(R.id.boxMeetingsAttended)
+        val boxMeetingsMissed = view.findViewById<LinearLayout>(R.id.boxMeetingsMissed)
 
         // Add click listener to profile picture for enlarging and edit options
         imageViewProfile.setOnClickListener {
             showEnlargedProfilePicture(imageViewProfile)
         }
 
+        // Add click listeners for activity boxes
+        boxMeetingsAttended.setOnClickListener {
+            // Navigate to attended meetings activity for the target user
+            val intent = Intent(activity, AttendedMeetingsActivity::class.java)
+            intent.putExtra("TARGET_USER_ID", targetUserId ?: auth.currentUser?.uid)
+            startActivity(intent)
+        }
+
+        boxMeetingsMissed.setOnClickListener {
+            // Navigate to missed meetings activity for the target user
+            val intent = Intent(activity, MissedMeetingsActivity::class.java)
+            intent.putExtra("TARGET_USER_ID", targetUserId ?: auth.currentUser?.uid)
+            startActivity(intent)
+        }
+
         // Check if we're viewing a specific user's profile or the current user's profile
         if (targetUserId != null && targetUserId != "current") {
             // Viewing another user's profile
             displayUserProfile(targetUserId!!, imageViewProfile, textViewName, textViewEmail, textViewDepartment, 
-                             textViewMeetingsAttended, textViewMeetingsMissed, textViewMinutesOfMeeting, imageViewEditDepartmentDesignation)
+                             textViewPhoneNumber, textViewEmailDetail, textViewDepartmentDetail, textViewDesignationDetail,
+                             textViewMeetingsAttendedDetail, textViewMeetingsMissedDetail, imageViewEditDepartmentDesignation)
+            
+            // Add long press listeners for copying contact info (only for other users' profiles)
+            setupCopyListeners(textViewPhoneNumber, textViewEmailDetail)
             
             // Hide sign out button when viewing another user's profile
             buttonSignOut.visibility = View.GONE
         } else {
             // Viewing current user's profile (default behavior)
-            displayCurrentUserProfile(imageViewProfile, textViewName, textViewEmail, textViewDepartment, 
-                                    textViewMeetingsAttended, textViewMeetingsMissed, textViewMinutesOfMeeting, imageViewEditDepartmentDesignation)
+            displayCurrentUserProfile(imageViewProfile, textViewName, textViewEmail, textViewDepartment,
+                                    textViewPhoneNumber, textViewEmailDetail, textViewDepartmentDetail, textViewDesignationDetail,
+                                    textViewMeetingsAttendedDetail, textViewMeetingsMissedDetail, imageViewEditDepartmentDesignation)
             
             // Set up sign out button for current user
             buttonSignOut.setOnClickListener {
@@ -114,40 +147,12 @@ class ProfileFragment : Fragment() {
             
             // Removed download all users CSV button setup as it's now in the navigation header
         }
-
-        // Make the attended meetings card clickable
-        cardMeetingsAttended.setOnClickListener {
-            // Navigate to attended meetings activity for the target user
-            val intent = Intent(activity, AttendedMeetingsActivity::class.java)
-            intent.putExtra("TARGET_USER_ID", targetUserId ?: auth.currentUser?.uid)
-            startActivity(intent)
-        }
-
-        // Make the missed meetings card clickable
-        cardMeetingsMissed.setOnClickListener {
-            // Navigate to missed meetings activity for the target user
-            val intent = Intent(activity, MissedMeetingsActivity::class.java)
-            intent.putExtra("TARGET_USER_ID", targetUserId ?: auth.currentUser?.uid)
-            startActivity(intent)
-        }
     }
     
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         
-        if (resultCode == Activity.RESULT_OK) {
-            when (requestCode) {
-                REQUEST_IMAGE_PICK -> {
-                    data?.data?.let { uri ->
-                        uploadProfilePicture(uri)
-                    }
-                }
-                REQUEST_IMAGE_CAPTURE -> {
-                    // Handle captured image from camera
-                    // This would require additional implementation
-                }
-            }
-        }
+        // Removed profile picture handling code as we're no longer using profile pictures
     }
     
     private fun displayCurrentUserProfile(
@@ -155,9 +160,12 @@ class ProfileFragment : Fragment() {
         textViewName: TextView,
         textViewEmail: TextView,
         textViewDepartment: TextView,
-        textViewMeetingsAttended: TextView,
-        textViewMeetingsMissed: TextView,
-        textViewMinutesOfMeeting: TextView,
+        textViewPhoneNumber: TextView,
+        textViewEmailDetail: TextView,
+        textViewDepartmentDetail: TextView,
+        textViewDesignationDetail: TextView,
+        textViewMeetingsAttendedDetail: TextView,
+        textViewMeetingsMissedDetail: TextView,
         imageViewEditDepartmentDesignation: ImageView
     ) {
         // --- Fetch Current User Data ---
@@ -177,6 +185,7 @@ class ProfileFragment : Fragment() {
                         val email = document.getString("email") ?: "No Email"
                         val department = document.getString("department") ?: "No Department"
                         val designation = document.getString("designation") ?: "Unassigned"
+                        val phoneNumber = document.getString("phoneNumber") ?: "Not Provided"
 
                         // Set the data into our TextViews
                         textViewName.text = name
@@ -184,8 +193,14 @@ class ProfileFragment : Fragment() {
                         // Show designation next to department
                         textViewDepartment.text = "$department • $designation"
                         
-                        // Load profile picture
-                        loadProfilePicture(uid, imageViewProfile)
+                        // Populate Details section
+                        textViewPhoneNumber.text = phoneNumber
+                        textViewEmailDetail.text = email
+                        textViewDepartmentDetail.text = department
+                        textViewDesignationDetail.text = designation
+                        
+                        // Show user initials instead of profile picture
+                        showUserInitials(imageViewProfile, name)
                         
                         // Check if current user is admin to show edit icon
                         checkIfUserIsAdmin(uid) { isAdmin ->
@@ -199,7 +214,7 @@ class ProfileFragment : Fragment() {
                         }
                         
                         // Fetch meeting statistics
-                        fetchMeetingStatistics(uid, textViewMeetingsAttended, textViewMeetingsMissed, textViewMinutesOfMeeting)
+                        fetchMeetingStatistics(uid, textViewMeetingsAttendedDetail, textViewMeetingsMissedDetail)
                     } else {
                         Log.d("ProfileFragment", "No such document")
                         textViewName.text = "User Not Found"
@@ -221,9 +236,12 @@ class ProfileFragment : Fragment() {
         textViewName: TextView,
         textViewEmail: TextView,
         textViewDepartment: TextView,
-        textViewMeetingsAttended: TextView,
-        textViewMeetingsMissed: TextView,
-        textViewMinutesOfMeeting: TextView,
+        textViewPhoneNumber: TextView,
+        textViewEmailDetail: TextView,
+        textViewDepartmentDetail: TextView,
+        textViewDesignationDetail: TextView,
+        textViewMeetingsAttendedDetail: TextView,
+        textViewMeetingsMissedDetail: TextView,
         imageViewEditDepartmentDesignation: ImageView
     ) {
         // Create a reference to the target user's document in the 'users' collection
@@ -238,6 +256,7 @@ class ProfileFragment : Fragment() {
                     val email = document.getString("email") ?: "No Email"
                     val department = document.getString("department") ?: "No Department"
                     val designation = document.getString("designation") ?: "Unassigned"
+                    val phoneNumber = document.getString("phoneNumber") ?: "Not Provided"
 
                     // Set the data into our TextViews
                     textViewName.text = name
@@ -245,8 +264,14 @@ class ProfileFragment : Fragment() {
                     // Show designation next to department
                     textViewDepartment.text = "$department • $designation"
                     
-                    // Load profile picture
-                    loadProfilePicture(userId, imageViewProfile)
+                    // Populate Details section
+                    textViewPhoneNumber.text = phoneNumber
+                    textViewEmailDetail.text = email
+                    textViewDepartmentDetail.text = department
+                    textViewDesignationDetail.text = designation
+                    
+                    // Show user initials instead of profile picture
+                    showUserInitials(imageViewProfile, name)
                     
                     // Check if current user is admin to show edit icon
                     val currentUserId = auth.currentUser?.uid
@@ -263,7 +288,7 @@ class ProfileFragment : Fragment() {
                     }
                     
                     // Fetch meeting statistics
-                    fetchMeetingStatistics(userId, textViewMeetingsAttended, textViewMeetingsMissed, textViewMinutesOfMeeting)
+                    fetchMeetingStatistics(userId, textViewMeetingsAttendedDetail, textViewMeetingsMissedDetail)
                 } else {
                     Log.d("ProfileFragment", "No such document for user: $userId")
                     textViewName.text = "User Not Found"
@@ -275,96 +300,79 @@ class ProfileFragment : Fragment() {
             }
     }
     
-    private fun loadProfilePicture(userId: String, imageView: ImageView) {
+    private fun showUserInitials(imageView: ImageView, userName: String) {
         try {
-            // Reference to the profile picture in Firebase Storage with explicit bucket
-            val storageRef = storage.getReference("profile_pictures/$userId.jpg")
+            // Extract initials from the user's name
+            val initials = getUserInitials(userName)
             
-            val ONE_MEGABYTE: Long = 1024 * 1024
-            storageRef.getBytes(ONE_MEGABYTE).addOnSuccessListener { bytes ->
-                // Successfully downloaded data, convert to bitmap and display
-                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                imageView.setImageBitmap(bitmap)
-                imageView.background = null // Remove the default background
-            }.addOnFailureListener {
-                // Handle any errors - use default image
-                Log.d("ProfileFragment", "No profile picture found for user: $userId, using default")
-                // Set default image resource to ensure it's visible
-                imageView.setImageResource(R.drawable.universalpp)
-            }
+            // Create a bitmap with the initials
+            val bitmap = createInitialsBitmap(initials)
+            
+            // Set the bitmap to the ImageView
+            imageView.setImageBitmap(bitmap)
+            imageView.background = null // Remove any background
         } catch (e: Exception) {
-            Log.e("ProfileFragment", "Error loading profile picture", e)
-            // Set default image resource to ensure it's visible
+            Log.e("ProfileFragment", "Error creating initials bitmap", e)
+            // Fallback to default image if there's an error
             imageView.setImageResource(R.drawable.universalpp)
         }
     }
     
-    private fun showProfilePictureOptions() {
-        val options = arrayOf("Choose from Gallery", "Take Photo", "Cancel")
-        AlertDialog.Builder(requireContext())
-            .setTitle("Update Profile Picture")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> chooseFromGallery()
-                    1 -> takePhoto() // This would require camera permissions
-                    2 -> {} // Cancel
+    private fun getUserInitials(name: String): String {
+        return try {
+            val trimmedName = name.trim()
+            if (trimmedName.isEmpty()) return "U"
+            
+            val names = trimmedName.split("\\s+".toRegex()).filter { it.isNotEmpty() }
+            when (names.size) {
+                0 -> "U"
+                1 -> names[0].firstOrNull()?.uppercaseChar()?.toString() ?: "U"
+                else -> {
+                    val firstInitial = names[0].firstOrNull()?.uppercaseChar()?.toString() ?: ""
+                    val lastInitial = names[names.size - 1].firstOrNull()?.uppercaseChar()?.toString() ?: ""
+                    firstInitial + lastInitial
                 }
             }
-            .show()
-    }
-    
-    private fun chooseFromGallery() {
-        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        startActivityForResult(intent, REQUEST_IMAGE_PICK)
-    }
-    
-    private fun takePhoto() {
-        // This would require implementing camera functionality with proper permissions
-        Toast.makeText(context, "Camera functionality coming soon", Toast.LENGTH_SHORT).show()
-    }
-    
-    private fun uploadProfilePicture(imageUri: Uri) {
-        try {
-            val currentUser = auth.currentUser
-            if (currentUser != null) {
-                val uid = currentUser.uid
-                
-                // Get bitmap from URI
-                val bitmap = MediaStore.Images.Media.getBitmap(requireActivity().contentResolver, imageUri)
-                
-                // Compress bitmap to reduce file size
-                val baos = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos)
-                val data = baos.toByteArray()
-                
-                // Create storage reference with explicit bucket
-                val storageRef = storage.getReference("profile_pictures/$uid.jpg")
-                val uploadTask = storageRef.putBytes(data)
-                
-                uploadTask
-                    .addOnProgressListener { taskSnapshot ->
-                        val progress = (100.0 * taskSnapshot.bytesTransferred) / taskSnapshot.totalByteCount
-                        Log.d("ProfileFragment", "Upload is $progress% done")
-                    }
-                    .addOnSuccessListener {
-                        Log.d("ProfileFragment", "Profile picture uploaded successfully")
-                        Toast.makeText(context, "Profile picture updated successfully", Toast.LENGTH_SHORT).show()
-                        
-                        // Reload the profile picture
-                        val imageViewProfile = view?.findViewById<ImageView>(R.id.imageViewProfile)
-                        imageViewProfile?.let { loadProfilePicture(uid, it) }
-                    }
-                    .addOnFailureListener { exception ->
-                        Log.e("ProfileFragment", "Error uploading profile picture", exception)
-                        Toast.makeText(context, "Error uploading profile picture: ${exception.message}", Toast.LENGTH_SHORT).show()
-                    }
-            } else {
-                Toast.makeText(context, "User not authenticated", Toast.LENGTH_SHORT).show()
-            }
         } catch (e: Exception) {
-            Log.e("ProfileFragment", "Error processing profile picture", e)
-            Toast.makeText(context, "Error processing profile picture: ${e.message}", Toast.LENGTH_SHORT).show()
+            Log.e("ProfileFragment", "Error extracting initials from name: $name", e)
+            "U"
         }
+    }
+    
+    private fun createInitialsBitmap(initials: String): Bitmap {
+        // Define the size of the bitmap (in pixels)
+        val size = 200
+        
+        // Create a bitmap and canvas
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        
+        // Draw background (blue color) - using a fixed color instead of context
+        val backgroundPaint = Paint().apply {
+            color = Color.parseColor("#FF6200EE") // Using purple_500 color directly
+            isAntiAlias = true
+        }
+        canvas.drawCircle((size / 2).toFloat(), (size / 2).toFloat(), (size / 2).toFloat(), backgroundPaint)
+        
+        // Draw text (initials)
+        val textPaint = Paint().apply {
+            color = Color.WHITE
+            textSize = size / 2.toFloat()
+            textAlign = Paint.Align.CENTER
+            isAntiAlias = true
+            isFakeBoldText = true
+        }
+        
+        // Measure text to center it
+        val textBounds = Rect()
+        textPaint.getTextBounds(initials, 0, initials.length, textBounds)
+        
+        // Draw the text centered
+        val x = size / 2.toFloat()
+        val y = (size / 2 + (textBounds.bottom - textBounds.top) / 2).toFloat()
+        canvas.drawText(initials, x, y, textPaint)
+        
+        return bitmap
     }
     
     private fun checkIfUserIsAdmin(userId: String, callback: (Boolean) -> Unit) {
@@ -374,7 +382,7 @@ class ProfileFragment : Fragment() {
                     if (document != null && document.exists()) {
                         val userDesignation = document.getString("designation")
                         // Make admin panel accessible to ADMIN users
-                        val isAdmin = (userDesignation == "ADMIN" || userDesignation == "DEAN" || userDesignation == "HOD")
+                        val isAdmin = (userDesignation == "ADMIN" || userDesignation == "HOD")
                         callback(isAdmin)
                     } else {
                         callback(false)
@@ -405,6 +413,7 @@ class ProfileFragment : Fragment() {
             val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_edit_user, null)
 
             val nameEditText = dialogView.findViewById<EditText>(R.id.editTextUserName)
+            val phoneEditText = dialogView.findViewById<EditText>(R.id.editTextPhone)
             val departmentSpinner = dialogView.findViewById<Spinner>(R.id.spinnerUserDepartment)
             val designationSpinner = dialogView.findViewById<Spinner>(R.id.spinnerUserDesignation)
 
@@ -414,7 +423,7 @@ class ProfileFragment : Fragment() {
             val departments = arrayOf("Unassigned", "AIML") // Only keeping AIML as per new requirements
             
             // For future reference, other designations were:
-            // "ADMIN", "DEAN", "Others", "Unassigned"
+            // "ADMIN", "Others", "Unassigned"
             // Order by authority level (high -> low), then include Others and Unassigned at end
             val designations = arrayOf("HOD", "Associate Professor", "Assistant Professor", "Lab Assistant", "HOD's Assistant", "Unassigned")
 
@@ -429,19 +438,38 @@ class ProfileFragment : Fragment() {
             departmentSpinner.setSelection(departments.indexOf(currentDepartment).coerceAtLeast(0))
             designationSpinner.setSelection(designations.indexOf(currentDesignation).coerceAtLeast(0))
 
+            // Fetch current phone number to populate the field
+            db.collection("users").document(userId).get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        val phoneNumber = document.getString("phoneNumber") ?: ""
+                        phoneEditText.setText(phoneNumber)
+                    }
+                }
+                .addOnFailureListener { 
+                    // If we can't fetch the phone number, leave the field empty
+                    phoneEditText.setText("")
+                }
+
             AlertDialog.Builder(requireContext())
                 .setView(dialogView)
-                .setTitle("Edit Department & Designation")
+                .setTitle("Edit User Details")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Update") { dialog, which ->
                     try {
                         val newDepartment = departmentSpinner.selectedItem.toString()
                         val newDesignation = designationSpinner.selectedItem.toString()
+                        val newPhoneNumber = phoneEditText.text.toString().trim()
 
-                        val updates = mapOf(
+                        val updates = mutableMapOf<String, Any>(
                             "department" to newDepartment,
                             "designation" to newDesignation
                         )
+                        
+                        // Only add phone number to updates if it's not empty
+                        if (newPhoneNumber.isNotEmpty()) {
+                            updates["phoneNumber"] = newPhoneNumber
+                        }
 
                         db.collection("users").document(userId).update(updates)
                             .addOnSuccessListener {
@@ -470,7 +498,7 @@ class ProfileFragment : Fragment() {
         }
     }
     
-    private fun fetchMeetingStatistics(userId: String, textViewAttended: TextView, textViewMissed: TextView, textViewMinutesOfMeeting: TextView) {
+    private fun fetchMeetingStatistics(userId: String, textViewAttended: TextView, textViewMissed: TextView) {
         // Fetch all meetings where the user is either the scheduler or an attendee
         db.collection("meetings")
             .get()
@@ -492,7 +520,7 @@ class ProfileFragment : Fragment() {
                         val currentDate = Date()
                         
                         if (meetingDate.before(currentDate)) {
-                            // This is a past meeting
+                            // This is a past meeting (scheduled time has passed)
                             // Check if the meeting has an end time (indicating it was conducted)
                             if (meeting.endTime != null) {
                                 // Meeting was conducted, count as attended
@@ -502,8 +530,20 @@ class ProfileFragment : Fragment() {
                                 val durationMinutes = durationMillis / (1000 * 60)
                                 totalMeetingMinutes += durationMinutes
                             } else {
-                                // Meeting has passed but no end time is recorded, count as missed
-                                meetingsMissed++
+                                // Meeting has passed but no end time is recorded
+                                // Check if the current time is past the expected end time
+                                val calendar = Calendar.getInstance()
+                                calendar.time = meetingDate
+                                // Ensure duration is valid, default to 60 minutes if not set properly
+                                val duration = if (meeting.duration > 0) meeting.duration else 60
+                                calendar.add(Calendar.MINUTE, duration)
+                                val expectedEndTime = calendar.time
+                                
+                                // Only count as missed if we're past the expected end time
+                                if (currentDate.after(expectedEndTime)) {
+                                    meetingsMissed++
+                                }
+                                // If we're still within the expected meeting duration, don't count it yet
                             }
                         }
                         // For future meetings, we don't count them in either category
@@ -514,21 +554,11 @@ class ProfileFragment : Fragment() {
                 // Update the UI with the statistics
                 textViewAttended.text = meetingsAttended.toString()
                 textViewMissed.text = meetingsMissed.toString()
-                
-                // Convert total minutes to hours and display
-                val totalHours = totalMeetingMinutes / 60
-                val remainingMinutes = totalMeetingMinutes % 60
-                textViewMinutesOfMeeting.text = if (remainingMinutes > 0) {
-                    "$totalHours hrs $remainingMinutes mins"
-                } else {
-                    "$totalHours hrs"
-                }
             }
             .addOnFailureListener { exception ->
                 Log.e("ProfileFragment", "Error fetching meetings: ", exception)
                 textViewAttended.text = "0"
                 textViewMissed.text = "0"
-                textViewMinutesOfMeeting.text = "0 hrs"
             }
     }
     
@@ -544,7 +574,7 @@ class ProfileFragment : Fragment() {
             return true
         }
         
-        // For group meetings (All Faculty, All HODs, etc.), we would need to check if the user 
+        // For group meetings (All Associate Prof, All Assistant Prof, etc.), we would need to check if the user 
         // belongs to that group, but for simplicity, we'll skip this for now
         // In a production app, you would implement group membership checking here
         
@@ -575,10 +605,11 @@ class ProfileFragment : Fragment() {
             val isCurrentUser = (targetUserId == null || targetUserId == "current" || targetUserId == auth.currentUser?.uid)
             editButton.visibility = if (isCurrentUser) View.VISIBLE else View.GONE
             
-            // Set up edit button
+            // Set up edit button - removed profile picture functionality
             editButton.setOnClickListener {
                 dialog.dismiss()
-                showProfilePictureOptions()
+                // Removed profile picture options as we're no longer using profile pictures
+                Toast.makeText(context, "Profile picture functionality has been removed", Toast.LENGTH_SHORT).show()
             }
             
             // Make dialog cancelable by touch outside
@@ -589,5 +620,38 @@ class ProfileFragment : Fragment() {
             Log.e("ProfileFragment", "Error showing enlarged image", e)
             Toast.makeText(context, "Error displaying enlarged image: ${e.message}", Toast.LENGTH_SHORT).show()
         }
+    }
+    
+    private fun setupCopyListeners(phoneTextView: TextView, emailTextView: TextView) {
+        // Add long click listener for phone number
+        phoneTextView.setOnLongClickListener {
+            val phoneNumber = phoneTextView.text.toString()
+            if (phoneNumber.isNotEmpty() && phoneNumber != "Not Provided") {
+                copyToClipboard("Phone Number", phoneNumber)
+                true // Consumed the long click
+            } else {
+                false // Did not consume the long click
+            }
+        }
+        
+        // Add long click listener for email
+        emailTextView.setOnLongClickListener {
+            val email = emailTextView.text.toString()
+            if (email.isNotEmpty() && email != "No Email") {
+                copyToClipboard("Email", email)
+                true // Consumed the long click
+            } else {
+                false // Did not consume the long click
+            }
+        }
+    }
+    
+    private fun copyToClipboard(label: String, text: String) {
+        val clipboard = activity?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        val clip = ClipData.newPlainText(label, text)
+        clipboard?.setPrimaryClip(clip)
+        
+        // Show a toast to confirm the copy
+        Toast.makeText(activity, "$label copied to clipboard", Toast.LENGTH_SHORT).show()
     }
 }

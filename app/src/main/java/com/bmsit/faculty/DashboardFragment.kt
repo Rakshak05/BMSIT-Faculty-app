@@ -8,8 +8,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import android.speech.RecognizerIntent
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -29,7 +29,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -39,6 +38,8 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.Timestamp
+import com.bmsit.faculty.SectionedMeetingAdapter
+import com.bmsit.faculty.MeetingListItem
 import java.time.LocalDate
 import java.util.Calendar
 import java.util.Locale
@@ -53,22 +54,16 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
     private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
     private lateinit var meetingsRecyclerView: RecyclerView
-    private lateinit var currentMeetingsRecyclerView: RecyclerView
     private var sectionedAdapter: SectionedMeetingAdapter? = null
-    private lateinit var currentMeetingAdapter: CurrentMeetingAdapter
     private val meetingList = mutableListOf<Meeting>()
     private val currentMeetingsList = mutableListOf<CurrentMeeting>()
     private val sectionedItems = mutableListOf<MeetingListItem>()
     private var currentUserDesignation: String? = null
-    private lateinit var scheduleMeetingButton: ExtendedFloatingActionButton
+    private lateinit var scheduleMeetingButton: View  // Changed from ExtendedFloatingActionButton to View
     private lateinit var progressBar: ProgressBar
     private lateinit var emptyStateTextView: TextView
-    private lateinit var currentMeetingsEmptyTextView: TextView
     private lateinit var dashboardTitle: TextView
     private var selectedDate: Calendar? = null
-    private lateinit var voiceFab: ExtendedFloatingActionButton
-    private val voiceNlu: VoiceNlu = VoiceNluRuleBased()
-
     // Map to store user IDs and their display names
     private val userNamesMap = mutableMapOf<String, String>()
     
@@ -80,6 +75,9 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
     
     // Add a set to track notified meetings to prevent duplicates
     private val notifiedMeetingIds = HashSet<String>()
+    
+    // SharedPreferences for tracking permission requests
+    private lateinit var preferences: SharedPreferences
     
     // Handler for periodic checks - using main thread looper explicitly
     private val handler = Handler(Looper.getMainLooper())
@@ -110,241 +108,6 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                     .show()
             }
         }
-
-    private val requestAudioPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                startSpeechRecognition()
-            } else {
-                Toast.makeText(context, "Microphone permission denied.", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-    private val speechLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            val data = result.data
-            val results = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-            val spoken = results?.firstOrNull()
-            if (!spoken.isNullOrBlank()) {
-                handleVoiceCommand(spoken)
-            } else {
-                Toast.makeText(context, "Didn't catch that. Please try again.", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-    private fun startSpeechRecognition() {
-        try {
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                putExtra(RecognizerIntent.EXTRA_PROMPT, "Say a command, e.g., 'Set up a meeting with HODs today at 4 pm'")
-            }
-            speechLauncher.launch(intent)
-        } catch (e: Exception) {
-            Toast.makeText(context, "Speech recognition not available.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun buildSectionedItems() {
-        sectionedItems.clear()
-        // Sort meetings by time ascending
-        meetingList.sortBy { it.dateTime.toDate().time }
-
-        val sdfHeader =
-            java.text.SimpleDateFormat("EEE, d MMM", java.util.Locale.getDefault())
-
-        fun sameDay(c1: Calendar, c2: Calendar): Boolean {
-            return c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR) &&
-                    c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR)
-        }
-
-        val todayCal = Calendar.getInstance()
-        val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-
-        val todayItems = meetingList.filter { m ->
-            val mc = Calendar.getInstance().apply { time = m.dateTime.toDate() }
-            sameDay(mc, todayCal)
-        }
-        val tomorrowItems = meetingList.filter { m ->
-            val mc = Calendar.getInstance().apply { time = m.dateTime.toDate() }
-            sameDay(mc, tomorrowCal)
-        }
-        val laterItems = meetingList.filter { m ->
-            val mc = Calendar.getInstance().apply { time = m.dateTime.toDate() }
-            mc.after(tomorrowCal) && !sameDay(mc, todayCal) && !sameDay(mc, tomorrowCal)
-        }
-
-        // Today section
-        sectionedItems.add(MeetingListItem.Header("Today"))
-        if (todayItems.isEmpty()) {
-            sectionedItems.add(MeetingListItem.Info("No meetings scheduled"))
-        } else {
-            todayItems.forEach { sectionedItems.add(MeetingListItem.Item(it)) }
-        }
-
-        // Tomorrow section
-        sectionedItems.add(MeetingListItem.Header("Tomorrow"))
-        if (tomorrowItems.isEmpty()) {
-            sectionedItems.add(MeetingListItem.Info("No meetings scheduled"))
-        } else {
-            tomorrowItems.forEach { sectionedItems.add(MeetingListItem.Item(it)) }
-        }
-
-        // Later dates, group by date
-        val groupedLater: Map<String, List<Meeting>> = laterItems.groupBy { m ->
-            val c = Calendar.getInstance().apply { time = m.dateTime.toDate() }
-            sdfHeader.format(c.time)
-        }
-        // Keep chronological order by sorted keys according to first meeting time
-        val orderedKeys = groupedLater.keys.sortedBy { key ->
-            // derive ordering from the first matching item in that date group
-            laterItems.firstOrNull { sdfHeader.format(it.dateTime.toDate()) == key }?.dateTime?.toDate()?.time
-                ?: Long.MAX_VALUE
-        }
-        orderedKeys.forEach { key ->
-            sectionedItems.add(MeetingListItem.Header(key))
-            groupedLater[key]?.forEach { sectionedItems.add(MeetingListItem.Item(it)) }
-        }
-    }
-
-    private fun handleVoiceCommand(command: String) {
-        // Try Cloud Function NLU first, then fallback to local parser
-        val data = hashMapOf("text" to command)
-        Firebase.functions
-            .getHttpsCallable("parseVoiceCommand")
-            .call(data)
-            .addOnSuccessListener { result ->
-                try {
-                    val map = result.data as? Map<*, *> ?: throw IllegalArgumentException("Invalid response")
-                    val rawTitle = (map["title"] as? String)?.ifBlank { "Meeting" } ?: "Meeting"
-                    val attendees = (map["attendees"] as? String) ?: "All Faculty"
-                    val location = (map["location"] as? String)?.ifBlank { "Not specified" } ?: "Not specified"
-                    val millisAny = map["dateTimeMillis"]
-                    val millis = when (millisAny) {
-                        is Number -> millisAny.toLong()
-                        is String -> millisAny.toLongOrNull() ?: System.currentTimeMillis()
-                        else -> System.currentTimeMillis()
-                    }
-                    val cal = Calendar.getInstance().apply { timeInMillis = millis }
-                    // Clean up titles like "meeting with all the hod's" so it doesn't become the title
-                    val title = normalizeTitleFromAttendees(rawTitle, attendees)
-                    val draft = MeetingDraft(
-                        title = title,
-                        attendees = attendees,
-                        location = location,
-                        dateTime = Timestamp(cal.time)
-                    )
-                    showConfirmBottomSheet(draft)
-                } catch (_: Exception) {
-                    val parsed = voiceNlu.parse(command, Calendar.getInstance())
-                    val normalizedTitle = normalizeTitleFromAttendees(parsed.title, parsed.attendees)
-                    val draft = parsed.copy(title = normalizedTitle)
-                    showConfirmBottomSheet(draft)
-                }
-            }
-            .addOnFailureListener {
-                val draft = voiceNlu.parse(command, Calendar.getInstance())
-                val normalizedTitle = normalizeTitleFromAttendees(draft.title, draft.attendees)
-                val draftWithNormalizedTitle = draft.copy(title = normalizedTitle)
-                showConfirmBottomSheet(draftWithNormalizedTitle)
-            }
-    }
-    private fun showConfirmBottomSheet(draft: MeetingDraft) {
-        val ctx = requireContext()
-        val bottomSheetDialog = BottomSheetDialog(ctx)
-        val view = layoutInflater.inflate(R.layout.bottom_sheet_meeting_confirm, null, false)
-        bottomSheetDialog.setContentView(view)
-
-        val etTitle = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.etTitle)
-        val etLocation = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.etLocation)
-        val textDate = view.findViewById<TextView>(R.id.textDate)
-        val textTime = view.findViewById<TextView>(R.id.textTime)
-        val btnChangeDate = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnChangeDate)
-        val btnChangeTime = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnChangeTime)
-        val btnCancel = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnCancel)
-        val btnConfirm = view.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnConfirm)
-
-        etTitle.setText(draft.title)
-        etLocation.setText(draft.location)
-
-        // Attendees selection (force to one of the supported sets)
-        val attendeeOptions = arrayOf("All Faculty", "All HODs", "All Deans")
-        var selectedAttendees = normalizeAttendees(draft.attendees)
-        var selectedIndex = attendeeOptions.indexOf(selectedAttendees).let { if (it >= 0) it else 0 }
-
-        // Prompt user to confirm/change attendees immediately
-        AlertDialog.Builder(ctx)
-            .setTitle("Select participants")
-            .setSingleChoiceItems(attendeeOptions, selectedIndex) { _, which ->
-                selectedIndex = which
-                selectedAttendees = attendeeOptions[which]
-            }
-            .setPositiveButton("OK") { _, _ -> }
-            .setNegativeButton("Cancel") { _, _ -> }
-            .show()
-
-        val cal = Calendar.getInstance().apply { time = draft.dateTime.toDate() }
-        val sdfDate = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault())
-        val sdfTime = SimpleDateFormat("h:mm a", Locale.getDefault())
-        fun refreshDateTimeLabels() {
-            textDate.text = sdfDate.format(cal.time)
-            textTime.text = sdfTime.format(cal.time)
-        }
-        refreshDateTimeLabels()
-
-        btnChangeDate.setOnClickListener {
-            val c = Calendar.getInstance().apply { time = cal.time }
-            android.app.DatePickerDialog(ctx, { _, y, m, d ->
-                cal.set(y, m, d)
-                refreshDateTimeLabels()
-            }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
-        }
-        btnChangeTime.setOnClickListener {
-            val c = Calendar.getInstance().apply { time = cal.time }
-            android.app.TimePickerDialog(ctx, { _, h, m ->
-                cal.set(Calendar.HOUR_OF_DAY, h)
-                cal.set(Calendar.MINUTE, m)
-                cal.set(Calendar.SECOND, 0)
-                refreshDateTimeLabels()
-            }, c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE), true).show()
-        }
-
-        btnCancel.setOnClickListener { bottomSheetDialog.dismiss() }
-        btnConfirm.setOnClickListener {
-            val title = etTitle.text?.toString()?.trim().orEmpty().ifBlank { draft.title }
-            val location = etLocation.text?.toString()?.trim().orEmpty().ifBlank { draft.location }
-            scheduleMeetingFromVoice(title, selectedAttendees, Timestamp(cal.time), location)
-            bottomSheetDialog.dismiss()
-        }
-
-        bottomSheetDialog.show()
-    }
-
-    private fun scheduleMeetingFromVoice(title: String, attendees: String, timestamp: Timestamp, location: String) {
-        val schedulerId = auth.currentUser?.uid
-        if (schedulerId == null) {
-            Toast.makeText(context, "You must be logged in.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        val meetingId = db.collection("meetings").document().id
-        val meeting = Meeting(
-            id = meetingId,
-            title = title,
-            location = location,
-            dateTime = timestamp,
-            attendees = attendees,
-            scheduledBy = schedulerId,
-            customAttendeeUids = emptyList(),
-            status = "Active"
-        )
-        db.collection("meetings").document(meetingId).set(meeting)
-            .addOnSuccessListener {
-                Toast.makeText(context, "Meeting scheduled.", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener {
-                Toast.makeText(context, "Failed to schedule meeting.", Toast.LENGTH_SHORT).show()
-            }
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -377,6 +140,10 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
             
             val view = inflater.inflate(R.layout.fragment_dashboard, container, false)
             Log.d("DashboardFragment", "Layout inflated successfully")
+            
+            // Initialize SharedPreferences
+            preferences = requireContext().getSharedPreferences("dashboard_prefs", Context.MODE_PRIVATE)
+            
             return view
         } catch (e: Exception) {
             Log.e("DashboardFragment", "Error in onCreateView", e)
@@ -400,12 +167,10 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
             db = FirebaseFirestore.getInstance()
             Log.d("DashboardFragment", "Firebase instances initialized")
             
-            scheduleMeetingButton = view.findViewById(R.id.fabScheduleMeeting)
+            scheduleMeetingButton = view.findViewById(R.id.cardScheduleMeeting)
             progressBar = view.findViewById(R.id.progressBarDashboard)
             emptyStateTextView = view.findViewById(R.id.textViewEmptyState)
-            currentMeetingsEmptyTextView = view.findViewById(R.id.textViewCurrentMeetingsEmpty)
             dashboardTitle = view.findViewById(R.id.textViewTitle)
-            voiceFab = view.findViewById(R.id.fabVoiceAssistant)
             Log.d("DashboardFragment", "Views found successfully")
             
             scheduleMeetingButton.setOnClickListener {
@@ -417,26 +182,8 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                     Toast.makeText(context, "Error opening schedule meeting screen: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
-            voiceFab.setOnClickListener {
-                try {
-                    Log.d("DashboardFragment", "Voice button clicked")
-                    // Check RECORD_AUDIO permission
-                    val hasAudio = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-                    if (!hasAudio) {
-                        requestAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                    } else {
-                        startSpeechRecognition()
-                    }
-                } catch (e: Exception) {
-                    Log.e("DashboardFragment", "Error handling voice button click", e)
-                    Toast.makeText(context, "Error starting voice recognition: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
             meetingsRecyclerView = view.findViewById(R.id.meetingsRecyclerView)
-            currentMeetingsRecyclerView = view.findViewById(R.id.currentMeetingsRecyclerView)
             meetingsRecyclerView.layoutManager = LinearLayoutManager(context)
-            // Change current meetings to vertical layout to match upcoming meetings
-            currentMeetingsRecyclerView.layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
             Log.d("DashboardFragment", "RecyclerView initialized")
             
             Log.d("DashboardFragment", "onViewCreated completed successfully")
@@ -690,9 +437,11 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                     .addOnSuccessListener { document ->
                         if (document != null && document.exists()) {
                             currentUserDesignation = document.getString("designation")
-                            // Modified to show buttons for all users, not just ADMIN/DEAN/HOD
-                            scheduleMeetingButton.visibility = View.VISIBLE
-                            voiceFab.visibility = View.VISIBLE
+                            // Only show schedule meeting button for HODs, Associate Professors, and HOD's Assistants
+                            val canScheduleMeeting = currentUserDesignation == "HOD" || 
+                                                   currentUserDesignation == "Associate Professor" || 
+                                                   currentUserDesignation == "HOD'S ASSISTANT"
+                            scheduleMeetingButton.visibility = if (canScheduleMeeting) View.VISIBLE else View.GONE
                             // Request notification permissions to ensure instant notifications
                             requestNotificationPermissionIfNeeded()
                             startListeningMeetings()
@@ -702,8 +451,7 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                         } else {
                             // Handle case where user document doesn't exist
                             Log.e("DashboardFragment", "User document does not exist for UID: ${currentUser.uid}")
-                            scheduleMeetingButton.visibility = View.VISIBLE
-                            voiceFab.visibility = View.VISIBLE
+                            scheduleMeetingButton.visibility = View.GONE
                             requestNotificationPermissionIfNeeded()
                             startListeningMeetings()
                             
@@ -719,9 +467,8 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                             emptyStateTextView.text = "Permission Error: Check Firebase Firestore rules. The app needs read access to the 'users' collection."
                             emptyStateTextView.visibility = View.VISIBLE
                         }
-                        // Still show the buttons and try to load meetings
-                        scheduleMeetingButton.visibility = View.VISIBLE
-                        voiceFab.visibility = View.VISIBLE
+                        // Hide schedule button on error
+                        scheduleMeetingButton.visibility = View.GONE
                         requestNotificationPermissionIfNeeded()
                         startListeningMeetings()
                         
@@ -730,9 +477,8 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                     }
             } catch (e: Exception) {
                 Log.e("DashboardFragment", "Error initializing adapter or fetching user data", e)
-                // Show buttons even if there's an error
-                scheduleMeetingButton.visibility = View.VISIBLE
-                voiceFab.visibility = View.VISIBLE                
+                // Hide schedule button on error
+                scheduleMeetingButton.visibility = View.GONE               
                 // Check for conflict notifications when user opens the app
                 checkForConflictNotifications()
             }
@@ -750,8 +496,18 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
             ) == PackageManager.PERMISSION_GRANTED
             
             if (!hasPermission) {
-                // Request the permission
-                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                // Check if we've already requested permission recently to avoid spam
+                val lastRequestTime = preferences.getLong("last_notification_permission_request", 0)
+                val currentTime = System.currentTimeMillis()
+                val timeSinceLastRequest = currentTime - lastRequestTime
+                
+                // Only request permission if it's been more than 5 minutes since the last request
+                if (timeSinceLastRequest > 5 * 60 * 1000) { // 5 minutes
+                    // Update the last request time
+                    preferences.edit().putLong("last_notification_permission_request", currentTime).apply()
+                    // Request the permission
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
             }
         }
     }
@@ -800,7 +556,7 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                     .whereLessThanOrEqualTo("dateTime", endOfDay)
                     .orderBy("dateTime", Query.Direction.ASCENDING)
             } else {
-                dashboardTitle.text = "Upcoming Meetings"
+                dashboardTitle.text = "Meetings"
                 val calendar = Calendar.getInstance()
                 // Subtract 1 hour to account for recently finished meetings that users might still want to see
                 calendar.add(Calendar.HOUR_OF_DAY, -1)
@@ -885,13 +641,13 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                             "Associate Professor",
                             "Lab Assistant",
                             "HOD",
-                            "DEAN",
-                            "ADMIN"
+                            "ADMIN",
+                            "Unassigned"
                         )
                         val canSeeMeeting = when (meeting.attendees) {
-                            "All Faculty" -> currentUserDesignation in validDesignations
-                            "All Deans" -> currentUserDesignation == "DEAN" || currentUserDesignation == "ADMIN"
-                            "All HODs" -> currentUserDesignation == "HOD" || currentUserDesignation == "ADMIN"
+                            "All Associate Prof" -> currentUserDesignation == "Associate Professor"
+                            "All Assistant Prof" -> currentUserDesignation == "Assistant Professor"
+                            "All Faculty" -> currentUserDesignation in listOf("Faculty", "Assistant Professor", "Associate Professor", "Lab Assistant", "HOD", "ADMIN", "Unassigned")
                             "Custom" -> meeting.customAttendeeUids.contains(currentUid)
                             else -> false
                         }
@@ -905,7 +661,7 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                             currentKnown.add(meeting.id)
                             Log.d("DashboardFragment", "Added meeting to list: ${meeting.title}")
                             
-                            // Check if this is a current meeting (ongoing)
+                            // Check if this meeting is currently ongoing and add it to current meetings list
                             checkAndAddCurrentMeeting(meeting, currentUid)
                         } else {
                             Log.d("DashboardFragment", "Meeting not added to list: ${meeting.title}")
@@ -942,19 +698,18 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                                 "Associate Professor",
                                 "Lab Assistant",
                                 "HOD",
-                                "DEAN",
-                                "ADMIN"
+                                "ADMIN",
+                                "Unassigned"
                             )
                             val canSee = when (mtg.attendees) {
-                                "All Faculty" -> currentUserDesignation in validDesignations
-                                "All Deans" -> currentUserDesignation == "DEAN" || currentUserDesignation == "ADMIN"
-                                "All HODs" -> currentUserDesignation == "HOD" || currentUserDesignation == "ADMIN"
+                                "All Associate Prof" -> currentUserDesignation == "Associate Professor"
+                                "All Assistant Prof" -> currentUserDesignation == "Assistant Professor"
+                                "All Faculty" -> currentUserDesignation in listOf("Faculty", "Assistant Professor", "Associate Professor", "Lab Assistant", "HOD", "ADMIN", "Unassigned")
                                 "Custom" -> mtg.customAttendeeUids.contains(currentUid)
                                 else -> false
                             }
                             val visibleToUserNow = canSee || mtg.scheduledBy == currentUid
-                            // Skip notification if user is a Developer
-                            if (currentUserDesignation != "Developer" && visibleToUserNow) showImmediateMeetingNotification(mtg)
+                            if (visibleToUserNow) showImmediateMeetingNotification(mtg)
                         }
                 }
                 knownMeetingIds.clear()
@@ -968,15 +723,12 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
                 progressBar.visibility = View.GONE
                 Log.d("DashboardFragment", "Meeting list size: ${meetingList.size}, Selected date: $selectedDate")
                 
-                // Update current meetings UI
-                updateCurrentMeetingsUI()
-                
                 if (meetingList.isEmpty()) {
                     // Improved empty state message to be more helpful
                     val emptyMessage = if (selectedDate != null) {
                         "No meetings scheduled for this date."
                     } else {
-                        "No upcoming meetings. Schedule a new meeting or check back later."
+                        "No meetings scheduled."
                     }
                     emptyStateTextView.text = emptyMessage
                     emptyStateTextView.visibility = View.VISIBLE
@@ -1045,27 +797,86 @@ class DashboardFragment : Fragment(), MeetingAdapter.OnMeetingInteractionListene
         }
     }
 
-    private fun updateCurrentMeetingsUI() {
-        // Get references to the title view
-        val currentMeetingsTitle = view?.findViewById<TextView>(R.id.textViewCurrentMeetingsTitle)
+    private fun buildSectionedItems() {
+        sectionedItems.clear()
         
-        if (currentMeetingsList.isEmpty()) {
-            // Hide everything related to current meetings
-            currentMeetingsTitle?.visibility = View.GONE
-            currentMeetingsRecyclerView.visibility = View.GONE
-            currentMeetingsEmptyTextView.visibility = View.GONE
-        } else {
-            // Show everything related to current meetings
-            currentMeetingsTitle?.visibility = View.VISIBLE
-            currentMeetingsRecyclerView.visibility = View.VISIBLE
-            currentMeetingsEmptyTextView.visibility = View.GONE
+        // Add current meetings section at the top if there are any
+        if (currentMeetingsList.isNotEmpty()) {
+            sectionedItems.add(MeetingListItem.Header("Current Meetings"))
+            currentMeetingsList.forEach { currentMeeting ->
+                // Convert CurrentMeeting to a special type of MeetingListItem
+                sectionedItems.add(MeetingListItem.CurrentMeetingItem(currentMeeting))
+            }
+        }
+        
+        // Sort regular meetings by time ascending
+        meetingList.sortBy { it.dateTime.toDate().time }
+
+        val sdfHeader =
+            java.text.SimpleDateFormat("EEE, d MMM", java.util.Locale.getDefault())
+
+        fun sameDay(c1: Calendar, c2: Calendar): Boolean {
+            return c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR) &&
+                    c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR)
+        }
+
+        val todayCal = Calendar.getInstance()
+        val tomorrowCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+
+        val todayItems = meetingList.filter { m ->
+            val mc = Calendar.getInstance().apply { time = m.dateTime.toDate() }
+            sameDay(mc, todayCal)
+        }
+        val tomorrowItems = meetingList.filter { m ->
+            val mc = Calendar.getInstance().apply { time = m.dateTime.toDate() }
+            sameDay(mc, tomorrowCal)
+        }
+        val laterItems = meetingList.filter { m ->
+            val mc = Calendar.getInstance().apply { time = m.dateTime.toDate() }
+            mc.after(tomorrowCal) && !sameDay(mc, todayCal) && !sameDay(mc, tomorrowCal)
+        }
+
+        // Today section (only if there are items that aren't current meetings)
+        if (todayItems.isNotEmpty()) {
+            // Filter out meetings that are already shown as current meetings
+            val nonCurrentTodayItems = todayItems.filter { meeting ->
+                !currentMeetingsList.any { currentMeeting -> currentMeeting.id == meeting.id }
+            }
             
-            // Get current user ID
-            val currentUid = auth.currentUser?.uid ?: ""
-            
-            // Update or create the adapter
-            currentMeetingAdapter = CurrentMeetingAdapter(requireContext(), currentMeetingsList, userNamesMap, currentUid)
-            currentMeetingsRecyclerView.adapter = currentMeetingAdapter
+            if (nonCurrentTodayItems.isNotEmpty()) {
+                sectionedItems.add(MeetingListItem.Header("Today"))
+                if (nonCurrentTodayItems.isEmpty()) {
+                    sectionedItems.add(MeetingListItem.Info("No meetings scheduled"))
+                } else {
+                    nonCurrentTodayItems.forEach { sectionedItems.add(MeetingListItem.Item(it)) }
+                }
+            }
+        }
+
+        // Tomorrow section
+        if (tomorrowItems.isNotEmpty()) {
+            sectionedItems.add(MeetingListItem.Header("Tomorrow"))
+            if (tomorrowItems.isEmpty()) {
+                sectionedItems.add(MeetingListItem.Info("No meetings scheduled"))
+            } else {
+                tomorrowItems.forEach { sectionedItems.add(MeetingListItem.Item(it)) }
+            }
+        }
+
+        // Later dates, group by date
+        val groupedLater: Map<String, List<Meeting>> = laterItems.groupBy { m ->
+            val c = Calendar.getInstance().apply { time = m.dateTime.toDate() }
+            sdfHeader.format(c.time)
+        }
+        // Keep chronological order by sorted keys according to first meeting time
+        val orderedKeys = groupedLater.keys.sortedBy { key ->
+            // derive ordering from the first matching item in that date group
+            laterItems.firstOrNull { sdfHeader.format(it.dateTime.toDate()) == key }?.dateTime?.toDate()?.time
+                ?: Long.MAX_VALUE
+        }
+        orderedKeys.forEach { key ->
+            sectionedItems.add(MeetingListItem.Header(key))
+            groupedLater[key]?.forEach { sectionedItems.add(MeetingListItem.Item(it)) }
         }
     }
 

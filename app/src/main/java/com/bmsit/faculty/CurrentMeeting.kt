@@ -11,6 +11,5 @@ data class CurrentMeeting(
     val scheduledBy: String,
     val startTime: Date,
     val isRecording: Boolean = false,
-    val transcription: String = "",
     val endTime: Date? = null
 )

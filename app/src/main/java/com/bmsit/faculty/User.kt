@@ -6,6 +6,6 @@ data class User(
     val name: String = "",
     val email: String = "",
     val department: String = "", // e.g., "Computer Science", "Mechanical"
-    val designation: String = "" // e.g., "Assistant Professor"
+    val designation: String = "", // e.g., "Assistant Professor"
+    val phoneNumber: String = "" // Added phone number field
 )
-

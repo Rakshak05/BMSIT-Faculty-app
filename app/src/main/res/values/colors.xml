@@ -13,6 +13,8 @@
     <!-- Text colors (light theme) -->
     <color name="text_primary">#FF000000</color>
     <color name="text_secondary">#99000000</color>
+    <!-- Navigation item colors for light theme -->
+    <color name="nav_item_default">#99000000</color>
     <!-- Meeting background colors -->
     <color name="hosted_meeting_background">#4CAF50</color> <!-- Green -->
     <color name="attended_meeting_background">#2196F3</color> <!-- Blue -->

@@ -41,6 +41,7 @@ class SelectAttendeesActivity : AppCompatActivity() {
         val doneButton = findViewById<Button>(R.id.buttonDone)
         val searchEditText = findViewById<EditText>(R.id.editTextSearchUser)
         val sortGroup = findViewById<RadioGroup>(R.id.radioGroupSort)
+        val selectAllButton = findViewById<Button>(R.id.buttonSelectAll)
 
         recyclerView.layoutManager = LinearLayoutManager(this)
 
@@ -57,6 +58,9 @@ class SelectAttendeesActivity : AppCompatActivity() {
             // Defaults
             adapter.setFilters(department = "All", designation = "All")
             adapter.setSortBy(SelectableUserAdapter.SortBy.DESIGNATION)
+            
+            // Update select all button visibility
+            updateSelectAllButtonVisibility(selectAllButton)
         }
 
         doneButton.setOnClickListener {
@@ -74,11 +78,19 @@ class SelectAttendeesActivity : AppCompatActivity() {
             finish()
         }
 
+        selectAllButton.setOnClickListener {
+            adapter.selectAllFilteredUsers()
+            updateSelectAllButtonVisibility(selectAllButton)
+        }
+
         // Search wiring
         searchEditText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                if (::adapter.isInitialized) adapter.setSearchQuery(s?.toString() ?: "")
+                if (::adapter.isInitialized) {
+                    adapter.setSearchQuery(s?.toString() ?: "")
+                    updateSelectAllButtonVisibility(selectAllButton)
+                }
             }
             override fun afterTextChanged(s: Editable?) {}
         })
@@ -87,8 +99,24 @@ class SelectAttendeesActivity : AppCompatActivity() {
         sortGroup.setOnCheckedChangeListener { _, checkedId ->
             if (!::adapter.isInitialized) return@setOnCheckedChangeListener
             when (checkedId) {
-                R.id.radioSortDesignation -> adapter.setSortBy(SelectableUserAdapter.SortBy.DESIGNATION)
-                R.id.radioSortDepartment -> adapter.setSortBy(SelectableUserAdapter.SortBy.DEPARTMENT)
+                R.id.radioSortDesignation -> {
+                    adapter.setSortBy(SelectableUserAdapter.SortBy.DESIGNATION)
+                    updateSelectAllButtonVisibility(selectAllButton)
+                }
+                R.id.radioSortDepartment -> {
+                    adapter.setSortBy(SelectableUserAdapter.SortBy.DEPARTMENT)
+                    updateSelectAllButtonVisibility(selectAllButton)
+                }
+            }
+        }
+    }
+    
+    private fun updateSelectAllButtonVisibility(selectAllButton: Button) {
+        if (::adapter.isInitialized) {
+            if (adapter.areFiltersApplied() && adapter.getFilteredUsersCount() > 0) {
+                selectAllButton.visibility = View.VISIBLE
+            } else {
+                selectAllButton.visibility = View.GONE
             }
         }
     }
@@ -106,10 +134,8 @@ class SelectAttendeesActivity : AppCompatActivity() {
         // "CS", "CSBS", "EEE", "ETE", "ECE", "Mech", "Civil", "ISE"
         val departments = arrayOf("All", "AIML") // Only keeping AIML as per new requirements
 
-        // For future reference, other designations were:
-        // "ADMIN", "DEAN", "Others", "Developer"
-        // Also keeping "All" for filtering purposes
-        val designations = arrayOf("All", "HOD", "Associate Professor", "Assistant Professor", "Lab Assistant", "HOD's Assistant")
+        // Updated designation options - added "unassigned" and removed "dean"
+        val designations = arrayOf("All", "Associate Professor", "Assistant Professor", "Faculty", "Unassigned", "Custom")
 
         departmentSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, departments)
         designationSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, designations)
@@ -118,6 +144,7 @@ class SelectAttendeesActivity : AppCompatActivity() {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 if (::adapter.isInitialized) {
                     adapter.setFilters(departmentSpinner.selectedItem.toString(), designationSpinner.selectedItem.toString())
+                    updateSelectAllButtonVisibility(findViewById(R.id.buttonSelectAll))
                 }
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}

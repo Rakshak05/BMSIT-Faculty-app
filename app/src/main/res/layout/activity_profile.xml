@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F2F4F8"
+    tools:context=".ProfileActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="24dp">
+
+        <!-- Toolbar Area -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:padding="16dp"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/btnBack"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_arrow_back" 
+                app:tint="#000000" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="24dp"
+                android:text="My profile"
+                android:textColor="#000000"
+                android:textSize="20sp"
+                android:textStyle="normal" />
+        </LinearLayout>
+
+        <!-- Profile Image and Name Section -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingTop="16dp"
+            android:paddingBottom="24dp">
+
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <!-- Avatar Placeholder (Blue Rounded Square) -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    app:cardBackgroundColor="#2D7CB8"
+                    app:cardCornerRadius="24dp"
+                    app:cardElevation="0dp">
+
+                    <TextView
+                        android:id="@+id/tvAvatarInitials"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:text="TR"
+                        android:textColor="#FFFFFF"
+                        android:textSize="40sp"
+                        android:textStyle="normal" />
+                </androidx.cardview.widget.CardView>
+
+                <!-- Camera Icon Badge -->
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_gravity="bottom|end"
+                    android:background="@drawable/circle_blue_background"
+                    android:padding="6dp"
+                    android:src="@drawable/ic_camera" 
+                    app:tint="#FFFFFF" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/tvProfileNameHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="T Rex"
+                android:textColor="#000000"
+                android:textSize="22sp"
+                android:textStyle="normal" />
+
+        </LinearLayout>
+
+        <!-- Section Title -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="8dp"
+            android:text="Details"
+            android:textColor="#757575"
+            android:textSize="12sp"
+            android:textAllCaps="true" />
+
+        <!-- Personal Info Card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:divider="@drawable/divider_horizontal"
+                android:showDividers="middle"
+                android:orientation="vertical">
+
+                <!-- Name Row (without icon) -->
+                <include
+                    layout="@layout/item_profile_row_no_icon"
+                    android:id="@+id/rowDisplayName" />
+
+                <!-- Mail id Row (without icon) -->
+                <include
+                    layout="@layout/item_profile_row_no_icon"
+                    android:id="@+id/rowAccount" />
+
+                <!-- Contact No. Row (without icon) -->
+                <include
+                    layout="@layout/item_profile_row_no_icon"
+                    android:id="@+id/rowDepartment" />
+
+                <!-- Department Row (without icon) -->
+                <include
+                    layout="@layout/item_profile_row_no_icon"
+                    android:id="@+id/rowJobTitle" />
+                
+                 <!-- Designation Row (without icon) -->
+                <include
+                    layout="@layout/item_profile_row_no_icon"
+                    android:id="@+id/rowManager" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+        
+        <!-- Activity Section Title -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="8dp"
+            android:text="Activity"
+            android:textColor="#757575"
+            android:textSize="12sp"
+            android:textAllCaps="true" />
+            
+        <!-- Activity Info Card -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:divider="@drawable/divider_horizontal"
+                android:showDividers="middle"
+                android:orientation="vertical">
+
+                <!-- Meetings Attended Row (without icon) -->
+                <include
+                    layout="@layout/item_profile_row_no_icon"
+                    android:id="@+id/rowMeetingsAttended" />
+
+                <!-- Meetings Missed Row (without icon) -->
+                <include
+                    layout="@layout/item_profile_row_no_icon"
+                    android:id="@+id/rowMeetingsMissed" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+    </LinearLayout>
+</ScrollView>

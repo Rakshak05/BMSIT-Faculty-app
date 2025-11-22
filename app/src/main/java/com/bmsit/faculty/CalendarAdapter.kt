@@ -120,9 +120,6 @@ class CalendarAdapter(
                     }
                 }
 
-                // Check for meetings with transcriptions
-                checkForTranscriptions(meetingsOnDate)
-
                 // Set indicator visibility and color based on meeting types
                 when {
                     missedMeetings.isNotEmpty() -> {
@@ -268,29 +265,6 @@ class CalendarAdapter(
             }
 
         return meetingLayout
-    }
-
-    /**
-     * Check if any meetings on this date have transcriptions
-     */
-    private fun checkForTranscriptions(meetings: List<Meeting>) {
-        // For each meeting, check if it has a transcription
-        meetings.forEach { meeting ->
-            db.collection("transcriptions")
-                .whereEqualTo("meetingId", meeting.id)
-                .limit(1)
-                .get()
-                .addOnSuccessListener { result ->
-                    if (!result.isEmpty) {
-                        // Meeting has transcription - add a special indicator
-                        // For now, we'll just keep the existing indicator but you could add
-                        // a second indicator or modify the existing one
-                    }
-                }
-                .addOnFailureListener {
-                    // Ignore errors for now
-                }
-        }
     }
 
     // Placeholder function - in a real implementation, this would check if attendance was recorded

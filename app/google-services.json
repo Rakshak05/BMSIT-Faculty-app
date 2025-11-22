@@ -37,6 +37,13 @@
             {
               "client_id": "927707695047-e657pb427gs6knf8mbd04sscfbser1h1.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "927707695047-1muuoehdiv76taf1ieq9qhiabicmlv05.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.bmsit.FacultyApp"
+              }
             }
           ]
         }

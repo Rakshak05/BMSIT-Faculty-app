@@ -154,4 +154,20 @@ class SelectableUserAdapter(private var allUsers: List<User>) : RecyclerView.Ada
         selectedUsers.add(user)
         notifyDataSetChanged()
     }
+    
+    // Method to select all filtered users
+    fun selectAllFilteredUsers() {
+        selectedUsers.addAll(filteredUsers)
+        notifyDataSetChanged()
+    }
+    
+    // Method to check if any filters are applied
+    fun areFiltersApplied(): Boolean {
+        return currentDepartment != "All" || currentDesignation != "All" || currentQuery.isNotEmpty()
+    }
+    
+    // Method to get the count of filtered users
+    fun getFilteredUsersCount(): Int {
+        return filteredUsers.size
+    }
 }

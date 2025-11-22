@@ -39,15 +39,7 @@ This document summarizes all the fixes and improvements made to the BMSIT Facult
 - Confirmed alarm permissions are properly requested
 - Tested alarm functionality
 
-### 6. Meeting Transcription Feature
-**Problem**: Transcription feature not working properly
-**Solution**:
-- Implemented Google Cloud Speech-to-Text API integration
-- Created backend function to automatically transcribe uploaded audio recordings
-- Enhanced MeetingTranscriptionActivity with better UI and user feedback
-- Added support for multiple audio formats (MP3, WAV, FLAC)
-
-### 7. Profile Picture Enlargement Feature
+### 6. Profile Picture Enlargement Feature
 **Problem**: Profile picture viewing experience could be improved
 **Solution**:
 - Directly enlarges the profile picture when clicked
@@ -55,7 +47,7 @@ This document summarizes all the fixes and improvements made to the BMSIT Facult
 - Added an edit button (top right) with a pencil icon for current users
 - Maintained appropriate sizing (300x300 dp) that doesn't cover the entire screen
 
-### 8. Meeting Duration Display
+### 7. Meeting Duration Display
 **Problem**: Meeting durations were not displayed properly
 **Solution**:
 - Meetings are not automatically ended after their scheduled duration
@@ -63,14 +55,14 @@ This document summarizes all the fixes and improvements made to the BMSIT Facult
 - Meetings are automatically ended by the app if they last more than 6 hours or the current time goes past 9 PM
 - The actual duration of past meetings is displayed in the "Attended Meetings" section in HH:MM format
 
-### 9. Meeting Time Display Update
+### 8. Meeting Time Display Update
 **Problem**: Meeting time display was inconsistent
 **Solution**:
 - For future meetings, the time display is now hidden
 - For past meetings, the time display shows the actual duration of the meeting in HH:MM format
 - In the calendar view, past meetings show their duration instead of the scheduled time range
 
-### 10. Meeting Attendance Edit Restriction
+### 9. Meeting Attendance Edit Restriction
 **Problem**: Meetings could be edited without restriction after attendance was taken
 **Solution**:
 - Once attendance is taken for a meeting, only the host can edit it
@@ -87,29 +79,25 @@ This document summarizes all the fixes and improvements made to the BMSIT Facult
 5. **LoginActivity.kt** - Enhanced error handling and logging
 6. **MainActivity.kt** - Enhanced error handling and logging
 7. **DiagnosticFragment.kt** - Enhanced error messages and guidance
-8. **MeetingTranscriptionActivity.kt** - Enhanced with transcription functionality
-9. **functions/index.js** - Added transcribeAudio function for Google Cloud Speech-to-Text integration
-10. **functions/package.json** - Added @google-cloud/speech dependency
-11. **app/src/main/res/layout/activity_meeting_transcription.xml** - Updated UI layout
-12. **app/src/main/java/com/bmsit/faculty/WorkingDaysUtils.kt** - New utility class for working days calculation
-13. **app/src/main/java/com/bmsit/faculty/AttendanceActivity.kt** - Added attendance timestamp saving
-14. **app/src/main/java/com/bmsit/faculty/Meeting.kt** - Added attendanceTakenAt field
-15. **app/src/main/java/com/bmsit/faculty/EditMeetingActivity.kt** - Added edit permission check
-16. **app/src/main/java/com/bmsit/faculty/DashboardFragment.kt** - Added edit permission check
-17. **app/src/main/java/com/bmsit/faculty/AutoEndMeetingReceiver.kt** - New receiver for Android app
-18. **app/src/main/java/com/bmsit/faculty/AttendedMeetingsActivity.kt** - Updated duration display
-19. **app/src/main/AndroidManifest.xml** - Registered new receiver
-20. **app/src/main/res/layout/dialog_enlarged_profile.xml** - New layout file for enlarged profile pictures
-21. **app/src/main/java/com/bmsit/faculty/ProfileFragment.kt** - Updated showEnlargedProfilePicture method
-22. **app/src/main/java/com/bmsit/faculty/DateMeetingsAdapter.kt** - Modified to hide time for future meetings and display duration for past meetings
-23. **app/src/main/java/com/bmsit/faculty/SectionedMeetingAdapter.kt** - Similar changes to DateMeetingsAdapter
-24. **app/src/main/java/com/bmsit/faculty/MeetingAdapter.kt** - Added timeTextView field and modified display logic
-25. **app/src/main/java/com/bmsit/faculty/CalendarAdapter.kt** - Updated to show duration for past meetings
+8. **functions/index.js** - Enhanced voice command parsing functionality
+9. **app/src/main/java/com/bmsit/faculty/WorkingDaysUtils.kt** - New utility class for working days calculation
+10. **app/src/main/java/com/bmsit/faculty/AttendanceActivity.kt** - Added attendance timestamp saving
+11. **app/src/main/java/com/bmsit/faculty/Meeting.kt** - Added attendanceTakenAt field
+12. **app/src/main/java/com/bmsit/faculty/EditMeetingActivity.kt** - Added edit permission check
+13. **app/src/main/java/com/bmsit/faculty/DashboardFragment.kt** - Added edit permission check
+14. **app/src/main/java/com/bmsit/faculty/AutoEndMeetingReceiver.kt** - New receiver for Android app
+15. **app/src/main/java/com/bmsit/faculty/AttendedMeetingsActivity.kt** - Updated duration display
+16. **app/src/main/AndroidManifest.xml** - Registered new receiver
+17. **app/src/main/res/layout/dialog_enlarged_profile.xml** - New layout file for enlarged profile pictures
+18. **app/src/main/java/com/bmsit/faculty/ProfileFragment.kt** - Updated showEnlargedProfilePicture method
+19. **app/src/main/java/com/bmsit/faculty/DateMeetingsAdapter.kt** - Modified to hide time for future meetings and display duration for past meetings
+20. **app/src/main/java/com/bmsit/faculty/SectionedMeetingAdapter.kt** - Similar changes to DateMeetingsAdapter
+21. **app/src/main/java/com/bmsit/faculty/MeetingAdapter.kt** - Added timeTextView field and modified display logic
+22. **app/src/main/java/com/bmsit/faculty/CalendarAdapter.kt** - Updated to show duration for past meetings
 
 ### New Files Created
 1. **functions/deploy.sh** - Unix deployment script for Firebase Functions
 2. **functions/deploy.bat** - Windows deployment script for Firebase Functions
-3. **functions/test_transcription.js** - Test script for transcription functionality
 
 ## How to Fully Resolve All Issues
 
@@ -155,11 +143,6 @@ service firebase.storage {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    match /meeting_recordings/{recordingId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
   }
 }
 ```
@@ -171,18 +154,11 @@ service firebase.storage {
 3. Log in: `firebase login`
 4. Deploy functions: `firebase deploy --only functions`
 
-### Step 4: Set up Google Cloud Speech-to-Text (for Transcription Feature)
-1. Enable the Cloud Speech-to-Text API in your Google Cloud project
-2. Ensure your Firebase project is linked to your Google Cloud project
-3. Deploy the updated functions with the new dependencies
-4. Test the transcription feature by uploading an audio recording as a meeting host
-
-### Step 5: Test the App
+### Step 4: Test the App
 1. Reinstall the app on your device
 2. Log in with a Google account
 3. Try uploading a profile picture
 4. Verify notifications work when app is in foreground, background, and closed
-5. Create a meeting and test the transcription feature by uploading an audio recording
 
 ## Technical Details
 
@@ -198,13 +174,6 @@ The app uses a comprehensive notification system:
 1. **Local Notifications**: When app is in foreground/background
 2. **Push Notifications**: When app is closed (requires deployed Cloud Functions)
 3. **Alarm Notifications**: For meeting reminders
-
-### Meeting Transcription System
-The app now supports automatic transcription of meeting recordings:
-1. **Upload**: Meeting hosts can upload audio recordings (MP3, WAV, FLAC)
-2. **Processing**: Backend function automatically transcribes recordings using Google Cloud Speech-to-Text
-3. **Storage**: Transcriptions are stored in Firestore and displayed in the app
-4. **Real-time Updates**: Transcriptions appear automatically when processing is complete
 
 ### Meeting Duration and Time Display
 1. **Duration Tracking**: Actual meeting durations are tracked and displayed
@@ -226,9 +195,9 @@ The app now supports automatic transcription of meeting recordings:
 The app integrates with Firebase for:
 1. **Authentication**: Google Sign-In
 2. **Firestore**: Data storage for users and meetings
-3. **Cloud Storage**: Profile picture and meeting recording storage
+3. **Cloud Storage**: Profile picture storage
 4. **Cloud Messaging**: Push notifications
-5. **Cloud Functions**: Server-side logic for notifications and transcription
+5. **Cloud Functions**: Server-side logic for notifications
 
 ### Error Handling
 Comprehensive error handling has been added:
@@ -259,14 +228,6 @@ The app includes diagnostic tools to help troubleshoot issues:
 3. Close the app completely
 4. Have another user create a meeting for you
 5. Verify push notification is received
-
-### Transcription Testing
-1. Create or select a meeting as host
-2. Navigate to the transcription view
-3. Upload an audio recording
-4. Verify the recording is uploaded successfully
-5. Wait for processing to complete
-6. Verify the transcription appears in the app
 
 ### Meeting Duration and Time Display Testing
 1. Create a future meeting and verify the time display is hidden
@@ -310,11 +271,6 @@ The app includes diagnostic tools to help troubleshoot issues:
    - Check Android logs for error messages
    - Use diagnostic tools to identify issues
    - Ensure all dependencies are properly configured
-
-5. **Transcription Issues**
-   - Ensure Google Cloud Speech-to-Text API is enabled
-   - Check Firebase Functions logs for transcription errors
-   - Verify audio file format is supported (MP3, WAV, FLAC)
 
 ### Checking Function Logs
 ```bash

@@ -113,13 +113,13 @@ class CalendarFragment : Fragment() {
                                             "Associate Professor",
                                             "Lab Assistant",
                                             "HOD",
-                                            "DEAN",
-                                            "ADMIN"
+                                            "ADMIN",
+                                            "Unassigned"
                                         )
                                         val canSeeMeeting = when (meeting.attendees) {
-                                            "All Faculty" -> userDesignation in validDesignationsForFacultyMeeting
-                                            "All Deans" -> userDesignation == "DEAN" || userDesignation == "ADMIN"
-                                            "All HODs" -> userDesignation == "HOD" || userDesignation == "ADMIN"
+                                            "All Associate Prof" -> userDesignation == "Associate Professor"
+                                            "All Assistant Prof" -> userDesignation == "Assistant Professor"
+                                            "All Faculty" -> userDesignation in listOf("Faculty", "Assistant Professor", "Associate Professor", "Lab Assistant", "HOD", "ADMIN", "Unassigned")
                                             "Custom" -> meeting.customAttendeeUids.contains(currentUser.uid)
                                             else -> false
                                         }
@@ -249,7 +249,8 @@ class CalendarFragment : Fragment() {
     }
 
     private fun showMeetingOptions(meeting: Meeting) {
-        val options = arrayOf("Take Attendance", "View Transcription")
+        // Only show "Take Attendance" option now
+        val options = arrayOf("Take Attendance")
         
         activity?.runOnUiThread {
             AlertDialog.Builder(requireContext())
@@ -257,66 +258,11 @@ class CalendarFragment : Fragment() {
                 .setItems(options) { _, which ->
                     when (which) {
                         0 -> showAttendanceDialog(meeting)
-                        1 -> showTranscription(meeting)
+                        // Removed transcription option
                     }
                 }
                 .show()
         }
-    }
-
-    private fun showTranscription(meeting: Meeting) {
-        // Check if meeting has transcription
-        db.collection("transcriptions")
-            .whereEqualTo("meetingId", meeting.id)
-            .limit(1)
-            .get()
-            .addOnSuccessListener { result ->
-                if (result.isEmpty) {
-                    // Check if user is host or participant
-                    val currentUser = auth.currentUser?.uid ?: return@addOnSuccessListener
-                    val isHost = meeting.scheduledBy == currentUser
-                    
-                    if (isHost) {
-                        // Host - inform about recording options
-                        activity?.runOnUiThread {
-                            AlertDialog.Builder(requireContext())
-                                .setTitle("Meeting Recording")
-                                .setMessage("You haven't recorded this meeting using the 'BMSIT Faculty' app. You can upload a recorded/saved .mp3 file from your device. View the transcription to upload a recording.")
-                                .setPositiveButton("View Transcription") { _, _ ->
-                                    // Show transcription activity where they can upload
-                                    val intent = Intent(context, MeetingTranscriptionActivity::class.java).apply {
-                                        putExtra("MEETING_ID", meeting.id)
-                                        putExtra("MEETING_TITLE", meeting.title)
-                                    }
-                                    startActivity(intent)
-                                }
-                                .setNegativeButton("Cancel", null)
-                                .show()
-                        }
-                    } else {
-                        // Participant - inform that no transcript is available
-                        activity?.runOnUiThread {
-                            AlertDialog.Builder(requireContext())
-                                .setTitle("Transcription Not Available")
-                                .setMessage("The transcription for this meeting is not available yet. Please check back later or contact the meeting host.")
-                                .setPositiveButton("OK", null)
-                                .show()
-                        }
-                    }
-                } else {
-                    // Show transcription activity
-                    val intent = Intent(context, MeetingTranscriptionActivity::class.java).apply {
-                        putExtra("MEETING_ID", meeting.id)
-                        putExtra("MEETING_TITLE", meeting.title)
-                    }
-                    startActivity(intent)
-                }
-            }
-            .addOnFailureListener {
-                activity?.runOnUiThread {
-                    Toast.makeText(context, "Error checking transcription: ${it.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
     }
 
     private fun showAttendanceDialog(meeting: Meeting) {
@@ -338,14 +284,14 @@ class CalendarFragment : Fragment() {
                 }
                 startActivity(intent)
             }
+            "All Associate Prof" -> {
+                fetchAndShowAttendance(meeting, listOf("Associate Professor"))
+            }
+            "All Assistant Prof" -> {
+                fetchAndShowAttendance(meeting, listOf("Assistant Professor"))
+            }
             "All Faculty" -> {
-                fetchAndShowAttendance(meeting, listOf("Faculty", "Assistant Professor", "Associate Professor", "Lab Assistant", "HOD", "DEAN", "ADMIN"))
-            }
-            "All HODs" -> {
-                fetchAndShowAttendance(meeting, listOf("HOD", "ADMIN"))
-            }
-            "All Deans" -> {
-                fetchAndShowAttendance(meeting, listOf("DEAN", "ADMIN"))
+                fetchAndShowAttendance(meeting, listOf("Faculty", "Assistant Professor", "Associate Professor", "Lab Assistant", "HOD", "ADMIN", "Unassigned"))
             }
             else -> {
                 // For unknown meeting types, show a message
