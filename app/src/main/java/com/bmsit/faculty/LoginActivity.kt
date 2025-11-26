@@ -892,6 +892,14 @@ class LoginActivity : AppCompatActivity() {
             // Start the Google Sign-In flow
             val signInIntent = googleSignInClient.signInIntent
             googleSignInLauncher.launch(signInIntent)
+        } catch (e: SecurityException) {
+            // Handle Google Play Services broker security exception
+            Log.e("LoginActivity", "SecurityException in handleGoogleSignIn. This might be due to Google Play Services broker issues.", e)
+            progressBar?.visibility = View.GONE
+            Toast.makeText(this, "Google Play Services security error. Please ensure Google Play Services is updated and try again.", Toast.LENGTH_LONG).show()
+            
+            // Try fallback method
+            fallbackFirebaseGoogleSignIn()
         } catch (e: Exception) {
             Log.e("LoginActivity", "Error in handleGoogleSignIn", e)
             progressBar?.visibility = View.GONE

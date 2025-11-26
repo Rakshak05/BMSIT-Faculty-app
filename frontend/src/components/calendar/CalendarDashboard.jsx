@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths, parseISO } from 'date-fns';
-import { FiChevronLeft, FiChevronRight, FiPlus, FiCalendar, FiClipboard, FiFileText, FiX, FiClock, FiMapPin, FiUsers, FiMenu, FiDownload } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiPlus, FiCalendar, FiClipboard, FiFileText, FiX, FiClock, FiMapPin, FiUsers, FiMenu, FiDownload, FiHome, FiUser } from 'react-icons/fi';
 import NewMeetingModal from './NewMeetingModal';
 
 const CalendarDashboard = () => {
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [expandedEvent, setExpandedEvent] = useState(null); // Track which event is expanded
+  const [expandedEvent, setExpandedEvent] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // Track hamburger menu state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Mock data for meetings
   const mockMeetings = [
@@ -226,201 +228,273 @@ const CalendarDashboard = () => {
   const days = getDaysToDisplay();
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-white">
-      {/* Top Navigation Bar */}
-      <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
-        <div className="flex items-center space-x-4">
+    <div className="flex h-screen bg-gray-900 text-white">
+      {/* Sidebar */}
+      <div className={`fixed md:relative z-30 h-screen bg-gray-800 w-64 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+        <div className="p-4 border-b border-gray-700">
           <h1 className="text-xl font-bold">Meeting Scheduler</h1>
-          <div className="flex items-center space-x-2">
-            <button 
-              onClick={goToToday}
-              className="px-3 py-1 text-sm bg-gray-700 rounded hover:bg-gray-600 transition"
-            >
-              Today
-            </button>
-            <button 
-              onClick={() => navigateDate('prev')}
-              className="p-2 rounded-full hover:bg-gray-700 transition"
-            >
-              <FiChevronLeft size={20} />
-            </button>
-            <button 
-              onClick={() => navigateDate('next')}
-              className="p-2 rounded-full hover:bg-gray-700 transition"
-            >
-              <FiChevronRight size={20} />
-            </button>
-            <h2 className="text-lg font-semibold">
-              {format(currentDate, 'MMMM yyyy')}
-            </h2>
-          </div>
         </div>
-        <div className="flex items-center space-x-4">
-          {/* Download CSV Button */}
-          <button 
-            onClick={handleDownloadEventsCSV}
-            className="flex items-center space-x-2 px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition"
-          >
-            <FiDownload size={18} />
-            <span>Download CSV</span>
-          </button>
-          
-          {/* Hamburger Menu */}
-          <div className="relative">
+        <nav className="p-4">
+          <ul className="space-y-2">
+            <li>
+              <button
+                onClick={() => {
+                  navigate('/');
+                  setIsSidebarOpen(false);
+                }}
+                className="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition"
+              >
+                <FiHome className="mr-3" size={18} />
+                <span>Dashboard</span>
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => {
+                  navigate('/');
+                  setIsSidebarOpen(false);
+                }}
+                className="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition"
+              >
+                <FiCalendar className="mr-3" size={18} />
+                <span>Calendar</span>
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => {
+                  // Faculty Members navigation
+                  setIsSidebarOpen(false);
+                }}
+                className="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition"
+              >
+                <FiUsers className="mr-3" size={18} />
+                <span>Faculty Members</span>
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={handleDownloadCSV}
+                className="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition"
+              >
+                <FiDownload className="mr-3" size={18} />
+                <span>Download CSV file</span>
+              </button>
+            </li>
+            {/* Add Faculty menu item placed according to user preference */}
+            <li>
+              <button
+                onClick={() => {
+                  navigate('/add-faculty');
+                  setIsSidebarOpen(false);
+                }}
+                className="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition"
+              >
+                <FiPlus className="mr-3" size={18} />
+                <span>Add Faculty</span>
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => {
+                  // Profile navigation
+                  setIsSidebarOpen(false);
+                }}
+                className="flex items-center w-full p-3 rounded-lg hover:bg-gray-700 transition"
+              >
+                <FiUser className="mr-3" size={18} />
+                <span>Profile</span>
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Navigation Bar */}
+        <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
+          <div className="flex items-center space-x-4">
             <button 
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 rounded-full hover:bg-gray-700 transition"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2 rounded-full hover:bg-gray-700 transition md:hidden"
             >
               <FiMenu size={20} />
             </button>
-            
-            {/* Dropdown Menu */}
-            {isMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-700">
-                <button
-                  onClick={() => {
-                    handleDownloadCSV();
-                    setIsMenuOpen(false);
-                  }}
-                  className="flex items-center w-full px-4 py-2 text-sm hover:bg-gray-700 transition"
-                >
-                  <FiDownload className="mr-2" size={16} />
-                  Download Faculty CSV
-                </button>
-              </div>
-            )}
-          </div>
-          
-          <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition">
-            <FiCalendar size={18} />
-            <span>Manage in Calendar</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Calendar View */}
-      <div className="flex-1 overflow-auto p-4">
-        <div className="grid gap-4 grid-cols-7">
-          {/* Day Headers */}
-          <div className="col-span-full grid grid-cols-7 gap-4 mb-2">
-            {days.map((day, index) => (
-              <div key={index} className="text-center p-2">
-                <div className="text-gray-400 text-sm">{format(day, 'EEE')}</div>
-                <div className={`text-lg ${isSameDay(day, new Date()) ? 'bg-blue-600 rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
-                  {format(day, 'd')}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Calendar Grid */}
-          {days.map((day, dayIndex) => {
-            const dayEvents = getEventsForDay(day);
-            return (
-              <div 
-                key={dayIndex} 
-                className="bg-gray-800 rounded-lg border border-gray-700 min-h-[200px]"
+            <h1 className="text-xl font-bold">Meeting Scheduler</h1>
+            <div className="flex items-center space-x-2">
+              <button 
+                onClick={goToToday}
+                className="px-3 py-1 text-sm bg-gray-700 rounded hover:bg-gray-600 transition"
               >
-                <div className="p-2">
-                  {dayEvents.map(event => (
-                    <div key={event.id}>
-                      {expandedEvent && expandedEvent.id === event.id ? (
-                        // Expanded view of the event - takes full width of the day cell
-                        <div className={`${event.color} text-white rounded-lg transition-all duration-300 ease-in-out mb-2`}>
-                          <div className="p-4">
-                            <div className="flex justify-between items-start">
-                              <h4 className="font-bold text-xl">{event.title}</h4>
-                              <button 
-                                onClick={() => setExpandedEvent(null)}
-                                className="p-1 rounded-full hover:bg-black hover:bg-opacity-20 transition"
-                              >
-                                <FiX size={20} />
-                              </button>
+                Today
+              </button>
+              <button 
+                onClick={() => navigateDate('prev')}
+                className="p-2 rounded-full hover:bg-gray-700 transition"
+              >
+                <FiChevronLeft size={20} />
+              </button>
+              <button 
+                onClick={() => navigateDate('next')}
+                className="p-2 rounded-full hover:bg-gray-700 transition"
+              >
+                <FiChevronRight size={20} />
+              </button>
+              <h2 className="text-lg font-semibold">
+                {format(currentDate, 'MMMM yyyy')}
+              </h2>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            {/* Download CSV Button */}
+            <button 
+              onClick={handleDownloadEventsCSV}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition"
+            >
+              <FiDownload size={18} />
+              <span>Download CSV</span>
+            </button>
+            
+            <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition">
+              <FiCalendar size={18} />
+              <span>Manage in Calendar</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Calendar View */}
+        <div className="flex-1 overflow-auto p-4">
+          <div className="grid gap-4 grid-cols-7">
+            {/* Day Headers */}
+            <div className="col-span-full grid grid-cols-7 gap-4 mb-2">
+              {days.map((day, index) => (
+                <div key={index} className="text-center p-2">
+                  <div className="text-gray-400 text-sm">{format(day, 'EEE')}</div>
+                  <div className={`text-lg ${isSameDay(day, new Date()) ? 'bg-blue-600 rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
+                    {format(day, 'd')}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Calendar Grid */}
+            {days.map((day, dayIndex) => {
+              const dayEvents = getEventsForDay(day);
+              return (
+                <div 
+                  key={dayIndex} 
+                  className="bg-gray-800 rounded-lg border border-gray-700 min-h-[200px]"
+                >
+                  <div className="p-2">
+                    {dayEvents.map(event => (
+                      <div key={event.id}>
+                        {expandedEvent && expandedEvent.id === event.id ? (
+                          // Expanded view of the event - takes full width of the day cell
+                          <div className={`${event.color} text-white rounded-lg transition-all duration-300 ease-in-out mb-2`}>
+                            <div className="p-4">
+                              <div className="flex justify-between items-start">
+                                <h4 className="font-bold text-xl">{event.title}</h4>
+                                <button 
+                                  onClick={() => setExpandedEvent(null)}
+                                  className="p-1 rounded-full hover:bg-black hover:bg-opacity-20 transition"
+                                >
+                                  <FiX size={20} />
+                                </button>
+                              </div>
+                              
+                              <div className="mt-4 space-y-3">
+                                <div className="flex items-center">
+                                  <FiClock size={18} className="mr-3" />
+                                  <span className="text-lg">{format(parseISO(event.start), 'h:mm a')} - {format(parseISO(event.end), 'h:mm a')}</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <FiMapPin size={18} className="mr-3" />
+                                  <span className="text-lg">{event.room}</span>
+                                </div>
+                                <div className="flex items-start">
+                                  <FiUsers size={18} className="mr-3 mt-1" />
+                                  <div>
+                                    <div className="text-lg font-medium">Participants</div>
+                                    <div className="mt-1">{event.participants.join(', ')}</div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex space-x-3 mt-6">
+                                <button
+                                  onClick={() => handleTakeAttendance(event)}
+                                  className="flex-1 flex items-center justify-center space-x-2 py-3 bg-white bg-opacity-25 hover:bg-opacity-35 rounded-xl transition-all duration-200"
+                                >
+                                  <FiClipboard size={20} />
+                                  <span className="text-lg font-medium">Take Attendance</span>
+                                </button>
+                                <button
+                                  onClick={() => handleStartRecording(event)}
+                                  className="flex-1 flex items-center justify-center space-x-2 py-3 bg-white bg-opacity-25 hover:bg-opacity-35 rounded-xl transition-all duration-200"
+                                >
+                                  <FiFileText size={20} />
+                                  <span className="text-lg font-medium">Start Recording</span>
+                                </button>
+                              </div>
                             </div>
-                            
-                            <div className="mt-4 space-y-3">
-                              <div className="flex items-center">
-                                <FiClock size={18} className="mr-3" />
-                                <span className="text-lg">{format(parseISO(event.start), 'h:mm a')} - {format(parseISO(event.end), 'h:mm a')}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <FiMapPin size={18} className="mr-3" />
-                                <span className="text-lg">{event.room}</span>
-                              </div>
-                              <div className="flex items-start">
-                                <FiUsers size={18} className="mr-3 mt-1" />
-                                <div>
-                                  <div className="text-lg font-medium">Participants</div>
-                                  <div className="mt-1">{event.participants.join(', ')}</div>
+                          </div>
+                        ) : (
+                          // Regular compact view of the event
+                          <div 
+                            className={`relative p-3 rounded-lg mb-2 cursor-pointer transition-all duration-200 ${event.color} text-white hover:opacity-90`}
+                            onClick={() => handleEventClick(event)}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="font-medium truncate">{event.title}</h4>
+                                <div className="flex items-center text-sm mt-1 opacity-90">
+                                  <FiClock size={12} className="mr-1" />
+                                  <span>{format(parseISO(event.start), 'h:mm a')}</span>
                                 </div>
                               </div>
                             </div>
-                            
-                            <div className="flex space-x-3 mt-6">
-                              <button
-                                onClick={() => handleTakeAttendance(event)}
-                                className="flex-1 flex items-center justify-center space-x-2 py-3 bg-white bg-opacity-25 hover:bg-opacity-35 rounded-xl transition-all duration-200"
-                              >
-                                <FiClipboard size={20} />
-                                <span className="text-lg font-medium">Take Attendance</span>
-                              </button>
-                              <button
-                                onClick={() => handleStartRecording(event)}
-                                className="flex-1 flex items-center justify-center space-x-2 py-3 bg-white bg-opacity-25 hover:bg-opacity-35 rounded-xl transition-all duration-200"
-                              >
-                                <FiFileText size={20} />
-                                <span className="text-lg font-medium">Start Recording</span>
-                              </button>
-                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        // Regular compact view of the event
-                        <div 
-                          className={`relative p-3 rounded-lg mb-2 cursor-pointer transition-all duration-200 ${event.color} text-white hover:opacity-90`}
-                          onClick={() => handleEventClick(event)}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h4 className="font-medium truncate">{event.title}</h4>
-                              <div className="flex items-center text-sm mt-1 opacity-90">
-                                <FiClock size={12} className="mr-1" />
-                                <span>{format(parseISO(event.start), 'h:mm a')}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {dayEvents.length === 0 && (
-                    <div className="text-center py-4 text-gray-500 text-sm">
-                      <p>No meetings</p>
-                    </div>
-                  )}
+                        )}
+                      </div>
+                    ))}
+                    
+                    {dayEvents.length === 0 && (
+                      <div className="text-center py-4 text-gray-500 text-sm">
+                        <p>No meetings</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
+
+        {/* Floating Action Button */}
+        <button 
+          onClick={handleCreateMeeting}
+          className="fixed bottom-6 left-6 w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 transition transform hover:scale-105 md:left-80"
+        >
+          <FiPlus size={24} />
+        </button>
+
+        {/* New Meeting Modal */}
+        {isModalOpen && (
+          <NewMeetingModal 
+            event={selectedEvent}
+            onClose={() => setIsModalOpen(false)}
+            onSave={handleSaveMeeting}
+          />
+        )}
       </div>
 
-      {/* Floating Action Button */}
-      <button 
-        onClick={handleCreateMeeting}
-        className="fixed bottom-6 left-6 w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 transition transform hover:scale-105"
-      >
-        <FiPlus size={24} />
-      </button>
-
-      {/* New Meeting Modal */}
-      {isModalOpen && (
-        <NewMeetingModal 
-          event={selectedEvent}
-          onClose={() => setIsModalOpen(false)}
-          onSave={handleSaveMeeting}
-        />
+      {/* Overlay for mobile sidebar */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
       )}
     </div>
   );

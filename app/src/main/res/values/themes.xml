@@ -9,4 +9,25 @@
         <!-- Let the system handle status bar/elevation overlays in M3. -->
         <!-- Customize other theme attributes here as needed. -->
     </style>
+
+    <!-- Add these to your themes.xml -->
+    <style name="SpinnerTimePickerDialog" parent="Theme.MaterialComponents.Light.Dialog">
+        <item name="android:timePickerStyle">@style/SpinnerTimePickerStyle</item>
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorAccent">@color/purple_500</item>
+        <!-- Make the buttons visible -->
+        <item name="android:buttonBarButtonStyle">@style/TimePickerButtonStyle</item>
+        <item name="buttonBarPositiveButtonStyle">@style/TimePickerButtonStyle</item>
+        <item name="buttonBarNegativeButtonStyle">@style/TimePickerButtonStyle</item>
+    </style>
+
+    <style name="SpinnerTimePickerStyle" parent="android:Widget.Material.TimePicker">
+        <item name="android:timePickerMode">spinner</item>
+    </style>
+    
+    <!-- Style for the time picker buttons to make them visible -->
+    <style name="TimePickerButtonStyle" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/purple_500</item>
+        <item name="android:textStyle">bold</item>
+    </style>
 </resources>

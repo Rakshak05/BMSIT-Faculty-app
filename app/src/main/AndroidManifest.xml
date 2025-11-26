@@ -60,9 +60,11 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="com.bmsit.faculty.MainActivity" android:exported="false" />
+        <activity
+            android:name="com.bmsit.faculty.MainActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
         <activity android:name="com.bmsit.faculty.ScheduleMeetingActivity" android:label="Schedule Meeting" android:exported="false" />
-        <activity android:name="com.bmsit.faculty.EditMeetingActivity" android:label="Edit Meeting" android:exported="false" />
         <activity android:name="com.bmsit.faculty.SelectAttendeesActivity" android:label="Select Participants" android:exported="false" />
         <activity android:name="com.bmsit.faculty.AttendanceActivity" android:label="Take Attendance" android:exported="false" />
         <activity android:name="com.bmsit.faculty.MissedMeetingsActivity" android:label="Missed Meetings" android:exported="false" />
@@ -87,7 +89,5 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-
     </application>
-
 </manifest>

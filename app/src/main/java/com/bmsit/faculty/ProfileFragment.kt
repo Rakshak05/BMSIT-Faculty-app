@@ -93,8 +93,10 @@ class ProfileFragment : Fragment() {
         // New UI elements for Activity section
         val textViewMeetingsAttendedDetail = view.findViewById<TextView>(R.id.textViewMeetingsAttendedDetail)
         val textViewMeetingsMissedDetail = view.findViewById<TextView>(R.id.textViewMeetingsMissedDetail)
+        val textViewTotalHoursAttendedDetail = view.findViewById<TextView>(R.id.textViewTotalHoursAttendedDetail)
         val boxMeetingsAttended = view.findViewById<LinearLayout>(R.id.boxMeetingsAttended)
         val boxMeetingsMissed = view.findViewById<LinearLayout>(R.id.boxMeetingsMissed)
+        val boxTotalHoursAttended = view.findViewById<LinearLayout>(R.id.boxTotalHoursAttended)
 
         // Add click listener to profile picture for enlarging and edit options
         imageViewProfile.setOnClickListener {
@@ -115,13 +117,30 @@ class ProfileFragment : Fragment() {
             intent.putExtra("TARGET_USER_ID", targetUserId ?: auth.currentUser?.uid)
             startActivity(intent)
         }
-
+        
+        // Add click listener for total hours box (no navigation, just informational)
+        boxTotalHoursAttended.setOnClickListener {
+            // No action needed, just informational
+        }
+        
+        // Set up sign out button
+        buttonSignOut.setOnClickListener {
+            auth.signOut()
+            // Go back to the Login screen
+            val intent = Intent(activity, LoginActivity::class.java)
+            // These flags prevent the user from going back to the main activity after logging out
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+            activity?.finish()
+        }
+        
         // Check if we're viewing a specific user's profile or the current user's profile
         if (targetUserId != null && targetUserId != "current") {
             // Viewing another user's profile
             displayUserProfile(targetUserId!!, imageViewProfile, textViewName, textViewEmail, textViewDepartment, 
                              textViewPhoneNumber, textViewEmailDetail, textViewDepartmentDetail, textViewDesignationDetail,
-                             textViewMeetingsAttendedDetail, textViewMeetingsMissedDetail, imageViewEditDepartmentDesignation)
+                             textViewMeetingsAttendedDetail, textViewMeetingsMissedDetail, textViewTotalHoursAttendedDetail,
+                             imageViewEditDepartmentDesignation)
             
             // Add long press listeners for copying contact info (only for other users' profiles)
             setupCopyListeners(textViewPhoneNumber, textViewEmailDetail)
@@ -132,18 +151,11 @@ class ProfileFragment : Fragment() {
             // Viewing current user's profile (default behavior)
             displayCurrentUserProfile(imageViewProfile, textViewName, textViewEmail, textViewDepartment,
                                     textViewPhoneNumber, textViewEmailDetail, textViewDepartmentDetail, textViewDesignationDetail,
-                                    textViewMeetingsAttendedDetail, textViewMeetingsMissedDetail, imageViewEditDepartmentDesignation)
+                                    textViewMeetingsAttendedDetail, textViewMeetingsMissedDetail, textViewTotalHoursAttendedDetail,
+                                    imageViewEditDepartmentDesignation)
             
-            // Set up sign out button for current user
-            buttonSignOut.setOnClickListener {
-                auth.signOut()
-                // Go back to the Login screen
-                val intent = Intent(activity, LoginActivity::class.java)
-                // These flags prevent the user from going back to the main activity after logging out
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                startActivity(intent)
-                activity?.finish()
-            }
+            // Show sign out button for current user
+            buttonSignOut.visibility = View.VISIBLE
             
             // Removed download all users CSV button setup as it's now in the navigation header
         }
@@ -166,6 +178,7 @@ class ProfileFragment : Fragment() {
         textViewDesignationDetail: TextView,
         textViewMeetingsAttendedDetail: TextView,
         textViewMeetingsMissedDetail: TextView,
+        textViewTotalHoursAttendedDetail: TextView,
         imageViewEditDepartmentDesignation: ImageView
     ) {
         // --- Fetch Current User Data ---
@@ -193,8 +206,8 @@ class ProfileFragment : Fragment() {
                         // Show designation next to department
                         textViewDepartment.text = "$department • $designation"
                         
-                        // Populate Details section
-                        textViewPhoneNumber.text = phoneNumber
+                        // Populate Details section with formatted phone number
+                        textViewPhoneNumber.text = formatPhoneNumberForDisplay(phoneNumber)
                         textViewEmailDetail.text = email
                         textViewDepartmentDetail.text = department
                         textViewDesignationDetail.text = designation
@@ -214,7 +227,7 @@ class ProfileFragment : Fragment() {
                         }
                         
                         // Fetch meeting statistics
-                        fetchMeetingStatistics(uid, textViewMeetingsAttendedDetail, textViewMeetingsMissedDetail)
+                        fetchMeetingStatistics(uid, textViewMeetingsAttendedDetail, textViewMeetingsMissedDetail, textViewTotalHoursAttendedDetail)
                     } else {
                         Log.d("ProfileFragment", "No such document")
                         textViewName.text = "User Not Found"
@@ -242,6 +255,7 @@ class ProfileFragment : Fragment() {
         textViewDesignationDetail: TextView,
         textViewMeetingsAttendedDetail: TextView,
         textViewMeetingsMissedDetail: TextView,
+        textViewTotalHoursAttendedDetail: TextView,
         imageViewEditDepartmentDesignation: ImageView
     ) {
         // Create a reference to the target user's document in the 'users' collection
@@ -264,8 +278,8 @@ class ProfileFragment : Fragment() {
                     // Show designation next to department
                     textViewDepartment.text = "$department • $designation"
                     
-                    // Populate Details section
-                    textViewPhoneNumber.text = phoneNumber
+                    // Populate Details section with formatted phone number
+                    textViewPhoneNumber.text = formatPhoneNumberForDisplay(phoneNumber)
                     textViewEmailDetail.text = email
                     textViewDepartmentDetail.text = department
                     textViewDesignationDetail.text = designation
@@ -288,7 +302,7 @@ class ProfileFragment : Fragment() {
                     }
                     
                     // Fetch meeting statistics
-                    fetchMeetingStatistics(userId, textViewMeetingsAttendedDetail, textViewMeetingsMissedDetail)
+                    fetchMeetingStatistics(userId, textViewMeetingsAttendedDetail, textViewMeetingsMissedDetail, textViewTotalHoursAttendedDetail)
                 } else {
                     Log.d("ProfileFragment", "No such document for user: $userId")
                     textViewName.text = "User Not Found"
@@ -298,6 +312,53 @@ class ProfileFragment : Fragment() {
                 Log.d("ProfileFragment", "get failed with ", exception)
                 Toast.makeText(activity, "Error fetching profile.", Toast.LENGTH_SHORT).show()
             }
+    }
+    
+    // Helper function to format phone number for display
+    private fun formatPhoneNumberForDisplay(phoneNumber: String): String {
+        // If it's already in the correct format, return as is
+        if (phoneNumber.matches(Regex("\\+91 \\d{10}"))) {
+            return phoneNumber
+        }
+        
+        // Handle special cases
+        if (phoneNumber == "Not Provided" || phoneNumber.isBlank()) {
+            return "+91 "
+        }
+        
+        // Remove all non-digit characters except +
+        val cleaned = phoneNumber.replace(Regex("[^0-9+]"), "")
+        
+        // Extract the digits after +91
+        return if (cleaned.startsWith("+91") && cleaned.length >= 3) {
+            val digits = cleaned.substring(3)
+            if (digits.length >= 10) {
+                // Take only first 10 digits
+                "+91 ${digits.substring(0, 10)}"
+            } else {
+                "+91 $digits"
+            }
+        } else if (cleaned.startsWith("91") && cleaned.length >= 2) {
+            val digits = cleaned.substring(2)
+            if (digits.length >= 10) {
+                "+91 ${digits.substring(0, 10)}"
+            } else {
+                "+91 $digits"
+            }
+        } else if (cleaned.startsWith("+") && cleaned.length >= 1) {
+            val digits = cleaned.substring(1)
+            if (digits.length >= 10) {
+                "+91 ${digits.substring(0, 10)}"
+            } else {
+                "+91 $digits"
+            }
+        } else {
+            if (cleaned.length >= 10) {
+                "+91 ${cleaned.substring(0, 10)}"
+            } else {
+                "+91 $cleaned"
+            }
+        }
     }
     
     private fun showUserInitials(imageView: ImageView, userName: String) {
@@ -443,13 +504,33 @@ class ProfileFragment : Fragment() {
                 .addOnSuccessListener { document ->
                     if (document != null && document.exists()) {
                         val phoneNumber = document.getString("phoneNumber") ?: ""
-                        phoneEditText.setText(phoneNumber)
+                        // Format the phone number for display in the edit field
+                        phoneEditText.setText(formatPhoneNumberForDisplay(phoneNumber))
                     }
                 }
                 .addOnFailureListener { 
-                    // If we can't fetch the phone number, leave the field empty
-                    phoneEditText.setText("")
+                    // If we can't fetch the phone number, leave the field empty with default format
+                    phoneEditText.setText("+91 ")
                 }
+            
+            // Add text watcher to format phone number as user types
+            phoneEditText.addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                
+                override fun afterTextChanged(s: android.text.Editable?) {
+                    val currentText = s.toString()
+                    // Format the phone number as the user types
+                    val formattedText = formatPhoneNumberInput(currentText)
+                    
+                    // Update the text if it's different
+                    if (formattedText != currentText) {
+                        phoneEditText.setText(formattedText)
+                        phoneEditText.setSelection(formattedText.length)
+                    }
+                }
+            })
 
             AlertDialog.Builder(requireContext())
                 .setView(dialogView)
@@ -467,8 +548,18 @@ class ProfileFragment : Fragment() {
                         )
                         
                         // Only add phone number to updates if it's not empty
-                        if (newPhoneNumber.isNotEmpty()) {
-                            updates["phoneNumber"] = newPhoneNumber
+                        if (newPhoneNumber.isNotEmpty() && newPhoneNumber != "+91 ") {
+                            // Validate and format the phone number
+                            val validationResult = validateAndFormatPhoneNumber(newPhoneNumber)
+                            if (validationResult != null) {
+                                updates["phoneNumber"] = validationResult
+                            } else {
+                                Toast.makeText(context, "Invalid phone number format", Toast.LENGTH_SHORT).show()
+                                return@setPositiveButton
+                            }
+                        } else {
+                            // If empty, store as empty string or remove the field
+                            updates["phoneNumber"] = ""
                         }
 
                         db.collection("users").document(userId).update(updates)
@@ -498,7 +589,7 @@ class ProfileFragment : Fragment() {
         }
     }
     
-    private fun fetchMeetingStatistics(userId: String, textViewAttended: TextView, textViewMissed: TextView) {
+    private fun fetchMeetingStatistics(userId: String, textViewAttended: TextView, textViewMissed: TextView, textViewTotalHours: TextView) {
         // Fetch all meetings where the user is either the scheduler or an attendee
         db.collection("meetings")
             .get()
@@ -554,11 +645,17 @@ class ProfileFragment : Fragment() {
                 // Update the UI with the statistics
                 textViewAttended.text = meetingsAttended.toString()
                 textViewMissed.text = meetingsMissed.toString()
+                
+                // Convert total minutes to hours and minutes format (HH:MM hrs)
+                val hours = totalMeetingMinutes / 60
+                val minutes = totalMeetingMinutes % 60
+                textViewTotalHours.text = String.format("%02d:%02d hrs", hours, minutes)
             }
             .addOnFailureListener { exception ->
                 Log.e("ProfileFragment", "Error fetching meetings: ", exception)
                 textViewAttended.text = "0"
                 textViewMissed.text = "0"
+                textViewTotalHours.text = "00:00 hrs"
             }
     }
     
@@ -653,5 +750,66 @@ class ProfileFragment : Fragment() {
         
         // Show a toast to confirm the copy
         Toast.makeText(activity, "$label copied to clipboard", Toast.LENGTH_SHORT).show()
+    }
+    
+    // Helper function to validate and format phone number
+    private fun validateAndFormatPhoneNumber(input: String): String? {
+        // Remove all non-digit characters except +
+        val cleaned = input.replace(Regex("[^0-9+]"), "")
+        
+        // Handle the +91 prefix
+        val digitsAfterCode = if (cleaned.startsWith("+91") && cleaned.length >= 3) {
+            cleaned.substring(3)
+        } else if (cleaned.startsWith("91") && cleaned.length >= 2) {
+            cleaned.substring(2)
+        } else if (cleaned.startsWith("+") && cleaned.length >= 1) {
+            cleaned.substring(1)
+        } else {
+            cleaned
+        }
+        
+        // Validate that we have exactly 10 digits
+        if (digitsAfterCode.length != 10) {
+            return null // Invalid format
+        }
+        
+        // Return formatted number with proper spacing
+        return "+91 $digitsAfterCode"
+    }
+    
+    // Helper function to format phone number as user types
+    private fun formatPhoneNumberInput(input: String): String {
+        // Remove all non-digit characters except +
+        val cleaned = input.replace(Regex("[^0-9+]"), "")
+        
+        // Handle the +91 prefix
+        return if (cleaned.startsWith("+91")) {
+            val digits = cleaned.substring(3)
+            if (digits.isNotEmpty()) {
+                "+91 ${digits.take(10)}"
+            } else {
+                "+91 "
+            }
+        } else if (cleaned.startsWith("91")) {
+            val digits = cleaned.substring(2)
+            if (digits.isNotEmpty()) {
+                "+91 ${digits.take(10)}"
+            } else {
+                "+91 "
+            }
+        } else if (cleaned.startsWith("+")) {
+            val digits = cleaned.substring(1)
+            if (digits.isNotEmpty()) {
+                "+91 ${digits.take(10)}"
+            } else {
+                "+91 "
+            }
+        } else {
+            if (cleaned.isNotEmpty()) {
+                "+91 ${cleaned.take(10)}"
+            } else {
+                "+91 "
+            }
+        }
     }
 }

@@ -1,5 +1,6 @@
 package com.bmsit.faculty
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
@@ -25,6 +26,7 @@ class FacultyMembersFragment : Fragment(), UserAdapter.OnItemClickListener {
     private lateinit var userAdapter: UserAdapter
     private val userList = mutableListOf<User>()
     private var currentUserIsAdmin: Boolean = false
+    private val EDIT_FACULTY_REQUEST_CODE = 1001
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -69,11 +71,27 @@ class FacultyMembersFragment : Fragment(), UserAdapter.OnItemClickListener {
 
     override fun onItemClick(user: User) {
         try {
-            // Instead of showing edit dialog, open the user's profile page
-            openUserProfile(user)
+            // If current user is admin, allow editing; otherwise, open profile
+            if (currentUserIsAdmin) {
+                openEditFacultyProfile(user)
+            } else {
+                openUserProfile(user)
+            }
         } catch (e: Exception) {
             Log.e("FacultyMembersFragment", "Error in onItemClick", e)
-            Toast.makeText(context, "Error opening user profile: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Error handling item click: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun openEditFacultyProfile(user: User) {
+        try {
+            val intent = Intent(activity, ProfileActivity::class.java)
+            intent.putExtra("USER_ID", user.uid)
+            intent.putExtra("IS_EDIT_MODE", true)
+            startActivityForResult(intent, EDIT_FACULTY_REQUEST_CODE)
+        } catch (e: Exception) {
+            Log.e("FacultyMembersFragment", "Error opening edit faculty profile", e)
+            Toast.makeText(context, "Error opening edit faculty profile: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
     
@@ -337,6 +355,14 @@ class FacultyMembersFragment : Fragment(), UserAdapter.OnItemClickListener {
             Log.e("FacultyMembersFragment", "Error in onOptionsItemSelected", e)
             Toast.makeText(context, "Error handling menu option: ${e.message}", Toast.LENGTH_SHORT).show()
             false
+        }
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == EDIT_FACULTY_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
+            // Refresh the user list after successful edit
+            fetchUsers()
         }
     }
 }

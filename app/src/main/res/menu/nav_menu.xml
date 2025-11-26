@@ -21,6 +21,12 @@
             android:icon="@drawable/ic_dashboard"
             android:title="Faculty data" />
             
+        <!-- Add Faculty menu item placed according to user preference -->
+        <item
+            android:id="@+id/nav_add_faculty"
+            android:icon="@drawable/ic_admin"
+            android:title="Add Faculty" />
+            
         <!-- Profile item moved here as requested -->
         <item
             android:id="@+id/nav_profile"

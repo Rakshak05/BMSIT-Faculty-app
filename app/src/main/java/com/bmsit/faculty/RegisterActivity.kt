@@ -37,7 +37,6 @@ class RegisterActivity : AppCompatActivity() {
     private lateinit var etPassword: TextInputEditText
     private lateinit var btnRegister: Button
     private lateinit var tvGoToSignIn: TextView
-    private lateinit var btnBack: View
     private lateinit var btnGoogleSignUp: MaterialButton
 
     private val googleSignUpLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -100,7 +99,6 @@ class RegisterActivity : AppCompatActivity() {
         etPassword = findViewById(R.id.etPassword)
         btnRegister = findViewById(R.id.btnRegister)
         tvGoToSignIn = findViewById(R.id.tvGoToSignIn)
-        btnBack = findViewById(R.id.btnBack)
         btnGoogleSignUp = findViewById(R.id.btnGoogleSignUp)
     }
     
@@ -114,10 +112,6 @@ class RegisterActivity : AppCompatActivity() {
             val intent = Intent(this, LoginActivity::class.java)
             startActivity(intent)
             finish()
-        }
-        
-        btnBack.setOnClickListener {
-            onBackPressed()
         }
         
         // Set up Google Sign-Up button

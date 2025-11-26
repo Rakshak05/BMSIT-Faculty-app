@@ -75,6 +75,9 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             toggle.syncState()
             Log.d("MainActivity", "Drawer toggle initialized")
 
+            // Check if we need to navigate to a specific fragment based on intent
+            handleNavigationIntent()
+
             if (savedInstanceState == null) {
                 try {
                     Log.d("MainActivity", "Loading initial fragment")
@@ -102,6 +105,62 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             Log.e("MainActivity", "Critical error in onCreate", e)
             Toast.makeText(this, "Critical error initializing main activity: ${e.message}", Toast.LENGTH_LONG).show()
         }
+    }
+
+    // Handle navigation intent from ProfileActivity
+    private fun handleNavigationIntent() {
+        val navigateTo = intent.getStringExtra("NAVIGATE_TO")
+        if (navigateTo != null) {
+            // Clear the intent data to prevent reprocessing
+            intent.removeExtra("NAVIGATE_TO")
+            
+            when (navigateTo) {
+                "DASHBOARD" -> {
+                    handler.postDelayed({
+                        replaceFragment(DashboardFragment())
+                        navigationView.setCheckedItem(R.id.nav_dashboard)
+                    }, 300)
+                }
+                "CALENDAR" -> {
+                    handler.postDelayed({
+                        replaceFragment(CalendarFragment())
+                        navigationView.setCheckedItem(R.id.nav_calendar)
+                    }, 300)
+                }
+                "FACULTY_MEMBERS" -> {
+                    handler.postDelayed({
+                        replaceFragment(FacultyMembersFragment())
+                        navigationView.setCheckedItem(R.id.nav_admin)
+                    }, 300)
+                }
+                "DOWNLOAD_CSV" -> {
+                    // For CSV download, we just need to show the dashboard and then trigger the download
+                    handler.postDelayed({
+                        replaceFragment(DashboardFragment())
+                        navigationView.setCheckedItem(R.id.nav_dashboard)
+                        // Trigger the CSV download after a short delay
+                        handler.postDelayed({
+                            // Get the current selection before triggering CSV download
+                            val currentSelection = navigationView.checkedItem?.itemId ?: R.id.nav_dashboard
+                            onNavigationItemSelected(navigationView.menu.findItem(R.id.nav_download_csv))
+                            // Ensure the selection remains unchanged after CSV download
+                            handler.postDelayed({
+                                navigationView.setCheckedItem(currentSelection)
+                            }, 1000)
+                        }, 500)
+                    }, 300)
+                }
+            }
+        }
+    }
+    
+    // Handle new intents when activity is already running (singleTop mode)
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        // Update the intent to the new one
+        this.intent = intent
+        // Handle the navigation intent
+        handleNavigationIntent()
     }
 
     private fun schedulePeriodicCheck() {
@@ -179,6 +238,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             val currentUser = auth.currentUser
             val facultyMembersMenuItem = navigationView.menu.findItem(R.id.nav_admin)
             val downloadCSVMenuItem = navigationView.menu.findItem(R.id.nav_download_csv)
+            val addFacultyMenuItem = navigationView.menu.findItem(R.id.nav_add_faculty)
             val profileMenuItem = navigationView.menu.findItem(R.id.nav_profile)
             
             val headerView = navigationView.getHeaderView(0)
@@ -196,6 +256,9 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                                 
                                 // Show download CSV option only to HODs and HOD's Assistants
                                 downloadCSVMenuItem.isVisible = (userDesignation == "HOD" || userDesignation == "HOD'S ASSISTANT")
+                                
+                                // Show add faculty option only to ADMIN users
+                                addFacultyMenuItem?.isVisible = (userDesignation == "ADMIN")
                                 
                                 // Profile is always visible
                                 profileMenuItem?.isVisible = true
@@ -219,6 +282,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                                 // Hide faculty members panel for users without proper designation
                                 facultyMembersMenuItem.isVisible = false
                                 downloadCSVMenuItem.isVisible = false
+                                addFacultyMenuItem?.isVisible = false
                                 profileMenuItem?.isVisible = true
                                 val displayName = currentUser.displayName?.trim()
                                 if (!displayName.isNullOrBlank()) {
@@ -242,6 +306,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                             // Hide faculty members panel on error
                             facultyMembersMenuItem.isVisible = false
                             downloadCSVMenuItem.isVisible = false
+                            addFacultyMenuItem?.isVisible = false
                             profileMenuItem?.isVisible = true
                         }
                     }
@@ -257,6 +322,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                             Log.w("MainActivity", "Failed to fetch user data, hiding faculty members menu")
                             facultyMembersMenuItem.isVisible = false
                             downloadCSVMenuItem.isVisible = false
+                            addFacultyMenuItem?.isVisible = false
                             profileMenuItem?.isVisible = true
                         } catch (e: Exception) {
                             Log.e("MainActivity", "Error in failure handler", e)
@@ -266,6 +332,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
                 // Hide faculty members panel for non-logged in users
                 facultyMembersMenuItem.isVisible = false
                 downloadCSVMenuItem.isVisible = false
+                addFacultyMenuItem?.isVisible = false
                 profileMenuItem?.isVisible = true
                 headerGreeting?.text = "Welcome back,"
                 
@@ -526,7 +593,43 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
         try {
             Log.d("MainActivity", "onNavigationItemSelected called for item: ${item.itemId}")
-            
+
+            // 1. HANDLE ACTION ITEMS (Like Export CSV)
+            // These should NOT change the selected state in the nav drawer
+            if (item.itemId == R.id.nav_download_csv) { 
+                // Perform the action
+                val currentUser = auth.currentUser
+                if (currentUser != null) {
+                    db.collection("users").document(currentUser.uid).get()
+                        .addOnSuccessListener { document ->
+                            if (document != null && document.exists()) {
+                                val userDesignation = document.getString("designation")
+                                // Check if user is HOD or HOD's Assistant before allowing download
+                                if (userDesignation == "HOD" || userDesignation == "HOD'S ASSISTANT") {
+                                    exportAllUsersDataToCSV()
+                                } else {
+                                    Toast.makeText(this, "Only HODs and HOD's Assistants can download faculty data.", Toast.LENGTH_LONG).show()
+                                }
+                            } else {
+                                Toast.makeText(this, "Error: User data not found.", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                        .addOnFailureListener { exception ->
+                            Toast.makeText(this, "Error checking user authorization: ${exception.message}", Toast.LENGTH_LONG).show()
+                        }
+                } else {
+                    Toast.makeText(this, "You must be logged in to download data.", Toast.LENGTH_LONG).show()
+                }
+                
+                // Close drawer
+                drawerLayout.closeDrawer(GravityCompat.START)
+                
+                // RETURN FALSE: This is the fix. It tells the drawer NOT to highlight this item.
+                // The previously selected item (Dashboard, Calendar, etc.) remains selected.
+                return false
+            }
+
+            // 2. HANDLE NAVIGATION DESTINATIONS
             // Prevent multiple rapid transitions
             if (isReplacingFragment) {
                 Log.d("MainActivity", "Fragment replacement in progress, ignoring navigation request")
@@ -542,60 +645,82 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             // Use a slight delay to allow drawer to close before fragment transition
             handler.postDelayed({
                 when (item.itemId) {
-                    R.id.nav_dashboard -> replaceFragment(DashboardFragment())
-                    R.id.nav_calendar -> replaceFragment(CalendarFragment())
+                    R.id.nav_dashboard -> {
+                        replaceFragment(DashboardFragment())
+                        navigationView.setCheckedItem(R.id.nav_dashboard)
+                    }
+                    R.id.nav_calendar -> {
+                        replaceFragment(CalendarFragment())
+                        navigationView.setCheckedItem(R.id.nav_calendar)
+                    }
                     R.id.nav_profile -> {
                         // Launch the new ProfileActivity instead of loading ProfileFragment
                         val intent = Intent(this, ProfileActivity::class.java)
                         startActivity(intent)
-                        isReplacingFragment = false // Reset immediately since we're not replacing a fragment
+                        // Don't reset isReplacingFragment here since we're launching a new activity
                     }
                     R.id.nav_admin -> {
-                        try {
-                            replaceFragment(FacultyMembersFragment())
-                        } catch (e: Exception) {
-                            Log.e("MainActivity", "Error creating FacultyMembersFragment", e)
-                            Toast.makeText(this, "Error accessing faculty members panel: ${e.message}", Toast.LENGTH_LONG).show()
-                            // Try to load dashboard as fallback
-                            replaceFragment(DashboardFragment())
-                        }
-                    }
-                    R.id.nav_download_csv -> {
-                        // Handle CSV download
+                        // Check if current user is HOD or HOD's Assistant before allowing access to Faculty Members page
                         val currentUser = auth.currentUser
                         if (currentUser != null) {
                             db.collection("users").document(currentUser.uid).get()
                                 .addOnSuccessListener { document ->
                                     if (document != null && document.exists()) {
                                         val userDesignation = document.getString("designation")
-                                        // Check if user is HOD or HOD's Assistant before allowing download
+                                        // Check if user is HOD or HOD's Assistant before allowing access
                                         if (userDesignation == "HOD" || userDesignation == "HOD'S ASSISTANT") {
-                                            exportAllUsersDataToCSV()
+                                            try {
+                                                replaceFragment(FacultyMembersFragment())
+                                                navigationView.setCheckedItem(R.id.nav_admin)
+                                            } catch (e: Exception) {
+                                                Log.e("MainActivity", "Error creating FacultyMembersFragment", e)
+                                                Toast.makeText(this, "Error accessing faculty members panel: ${e.message}", Toast.LENGTH_LONG).show()
+                                                // Try to load dashboard as fallback
+                                                replaceFragment(DashboardFragment())
+                                                navigationView.setCheckedItem(R.id.nav_dashboard)
+                                            }
                                         } else {
-                                            Toast.makeText(this, "Only HODs and HOD's Assistants can download faculty data.", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(this, "Only HODs and HOD's Assistants can access faculty members.", Toast.LENGTH_LONG).show()
+                                            // Load dashboard as fallback
+                                            replaceFragment(DashboardFragment())
+                                            navigationView.setCheckedItem(R.id.nav_dashboard)
                                         }
                                     } else {
                                         Toast.makeText(this, "Error: User data not found.", Toast.LENGTH_LONG).show()
+                                        // Load dashboard as fallback
+                                        replaceFragment(DashboardFragment())
+                                        navigationView.setCheckedItem(R.id.nav_dashboard)
                                     }
                                 }
                                 .addOnFailureListener { exception ->
                                     Toast.makeText(this, "Error checking user authorization: ${exception.message}", Toast.LENGTH_LONG).show()
+                                    // Load dashboard as fallback
+                                    replaceFragment(DashboardFragment())
+                                    navigationView.setCheckedItem(R.id.nav_dashboard)
                                 }
                         } else {
-                            Toast.makeText(this, "You must be logged in to download data.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this, "You must be logged in to access this feature.", Toast.LENGTH_LONG).show()
+                            // Load dashboard as fallback
+                            replaceFragment(DashboardFragment())
+                            navigationView.setCheckedItem(R.id.nav_dashboard)
                         }
                     }
+
                 }
                 // Reset the flag after a delay to allow next navigation (except for profile)
                 if (item.itemId != R.id.nav_profile) {
                     handler.postDelayed({
                         isReplacingFragment = false
                     }, 500)
+                } else {
+                    // For profile, reset immediately since we're launching a new activity
+                    isReplacingFragment = false
                 }
             }, 300)
             
-            Log.d("MainActivity", "Navigation item handled successfully")
+            // Return true for navigation items so the touch feedback occurs
             return true
+
         } catch (e: Exception) {
             Log.e("MainActivity", "Error in onNavigationItemSelected", e)
             isReplacingFragment = false
