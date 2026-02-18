@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BMSIT Faculty</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <!-- Required for Google Sign-In: replace with your actual Web client ID from Firebase Console -->
+    <string name="default_web_client_id">927707695047-e657pb427gs6knf8mbd04sscfbser1h1.apps.googleusercontent.com</string>
+    
+    <!-- Meeting scheduling labels -->
+    <string name="title_reason_label">Title/Reason:</string>
+    <string name="venue_label">Venue:</string>
+    <string name="meeting_title_hint">Meeting Title / Reason</string>
+    <string name="location_hint">Location (e.g., Conference Hall)</string>
+    
+    <!-- Meeting scheduling box labels -->
+    <string name="reason_box_label">Reason:</string>
+    <string name="venue_box_label">Venue:</string>
+    
+    <!-- Authentication strings -->
+    <string name="welcome_back">Welcome back!</string>
+    <string name="faculty_login">Faculty Login</string>
+    <string name="email_hint">Email</string>
+    <string name="password_hint">Password</string>
+    <string name="login_button_text">Login</string>
+    <string name="forgot_password">Forgot Password?</string>
+    <string name="continue_with_google">Continue with Google</string>
+    <string name="dont_have_account">Don\'t have an account?</string>
+    <string name="contact_admin">Contact Admin</string>
+    <string name="or_divider_text">OR</string>
+    
+    <!-- Authentication messages -->
+    <string name="contact_admin_message">Please contact your administrator to create an account</string>
+    <string name="password_setup_message">Account found. Sending password setup email...</string>
+    <string name="password_setup_email_sent">We\'ve sent you an email to set up your password. Please check your inbox.</string>
+    <string name="password_setup_email_failed">Failed to send password setup email. Please contact support.</string>
+    <string name="password_reset_email_sent">Password reset email sent. Please check your inbox.</string>
+    <string name="password_reset_email_failed">Failed to send password reset email. Please check the email address.</string>
+    <string name="email_required_for_reset">Please enter your email first</string>
+    <string name="valid_email_required">Please enter a valid email</string>
+</resources>

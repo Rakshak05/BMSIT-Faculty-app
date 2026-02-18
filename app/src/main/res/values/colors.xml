@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <!-- Add this new red color for error text -->
+    <color name="red_error">#D32F2F</color>
+    <color name="colorError">#D32F2F</color>
+    <!-- Text colors (light theme) -->
+    <color name="text_primary">#FF000000</color>
+    <color name="text_secondary">#99000000</color>
+    <!-- Navigation item colors for light theme -->
+    <color name="nav_item_default">#99000000</color>
+    <!-- Meeting background colors -->
+    <color name="hosted_meeting_background">#4CAF50</color> <!-- Green -->
+    <color name="attended_meeting_background">#2196F3</color> <!-- Blue -->
+    <color name="missed_meeting_background">#F44336</color> <!-- Red -->
+    <color name="both_meeting_background">#9C27B0</color> <!-- Purple -->
+</resources>

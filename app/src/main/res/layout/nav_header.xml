@@ -1,0 +1,29 @@
+<!-- This is the blueprint for the top part of your slide-out menu. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/colorPrimary"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:theme="@style/ThemeOverlay.AppCompat.Dark">
+
+    <!-- Profile Picture -->
+    <ImageView
+        android:id="@+id/imageViewHeaderProfile"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginTop="16dp"
+        android:scaleType="centerCrop"
+        android:background="@drawable/avatar_circle"
+        android:clipToOutline="true"
+        android:src="@drawable/universalpp" />
+
+    <TextView
+        android:id="@+id/textViewHeaderGreeting"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:text="Welcome back,"
+        android:textAppearance="@style/TextAppearance.AppCompat.Body1" />
+        
+</LinearLayout>

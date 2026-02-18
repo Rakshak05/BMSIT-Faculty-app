@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_dashboard"
+            android:icon="@drawable/ic_dashboard"
+            android:title="Dashboard" />
+        <item
+            android:id="@+id/nav_calendar"
+            android:icon="@drawable/ic_calendar"
+            android:title="Calendar" />
+        <!-- Faculty Members (formerly Admin Panel) -->
+        <item
+            android:id="@+id/nav_admin"
+            android:icon="@drawable/ic_admin"
+            android:title="Faculty Members" />
+
+        <!-- Download All Users Data as CSV -->
+        <item
+            android:id="@+id/nav_download_csv"
+            android:icon="@drawable/ic_dashboard"
+            android:title="Faculty data" />
+            
+        <!-- Add Faculty menu item placed according to user preference -->
+        <item
+            android:id="@+id/nav_add_faculty"
+            android:icon="@drawable/ic_admin"
+            android:title="Add Faculty" />
+            
+        <!-- Profile item moved here as requested -->
+        <item
+            android:id="@+id/nav_profile"
+            android:icon="@drawable/ic_profile"
+            android:title="Profile" />
+    </group>
+    
+    <!-- Spacer items to push remaining items to bottom -->
+    <group>
+        <item android:id="@+id/spacer1" android:title="" />
+        <item android:id="@+id/spacer2" android:title="" />
+        <item android:id="@+id/spacer3" android:title="" />
+        <item android:id="@+id/spacer4" android:title="" />
+        <item android:id="@+id/spacer5" android:title="" />
+        <item android:id="@+id/spacer6" android:title="" />
+        <item android:id="@+id/spacer7" android:title="" />
+        <item android:id="@+id/spacer8" android:title="" />
+        <item android:id="@+id/spacer9" android:title="" />
+        <item android:id="@+id/spacer10" android:title="" />
+    </group>
+</menu>

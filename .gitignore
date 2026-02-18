@@ -1,0 +1,42 @@
+*.iml
+.gradle
+/local.properties
+/.idea/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+venv/
+ENV/
+
+# IDEs
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Dependencies and Build
+node_modules/
+**/node_modules/
+/build
+/captures
+.externalNativeBuild
+.cxx
+
+# Firebase / Android
+.firebase/
+firestore-debug.log
+ui-debug.log
+google-services.json
+service-account.json
+*.keystore
+*.jks
+
+.DS_Store
+.npminstall.log
